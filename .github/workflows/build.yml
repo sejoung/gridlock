@@ -2,8 +2,8 @@ name: Build & Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -19,9 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get version from tag
+      - name: Get version
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+        run: echo "version=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Create .love file
         run: |
@@ -116,7 +116,9 @@ jobs:
 
           # Use pre-built .ico icon
           if (Test-Path "assets\icon.ico") {
-            npx rcedit@1.1.2 "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
+            npm install rcedit
+            $rcedit = Join-Path (Get-Location) "node_modules\.bin\rcedit.cmd"
+            & $rcedit "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
           }
 
           Rename-Item $loveDir "gridlock-windows"
@@ -156,119 +158,15 @@ jobs:
           # Copy pre-built icon as favicon
           if [ -f assets/icon.png ]; then
             cp assets/icon.png build/web/favicon.png
+            # Add favicon link to generated index.html
+            sed -i 's|</head>|<link rel="icon" type="image/png" href="favicon.png"></head>|' build/web/index.html
           fi
-
-          # Create custom index.html
-          cat > build/web/index.html << 'HTMLEOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Gridlock - A Parking Puzzle</title>
-            <link rel="icon" type="image/png" href="favicon.png">
-            <style>
-              * { margin: 0; padding: 0; box-sizing: border-box; }
-              body {
-                background: #1a1a2e;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                min-height: 100vh;
-                font-family: -apple-system, sans-serif;
-                color: #e0e0e0;
-              }
-              h1 { margin-bottom: 16px; font-size: 24px; }
-              canvas {
-                border: 2px solid #333;
-                border-radius: 8px;
-              }
-              .loading {
-                color: #888;
-                margin-top: 16px;
-                font-size: 14px;
-              }
-              #loadingBar {
-                width: 300px;
-                height: 6px;
-                background: #333;
-                border-radius: 3px;
-                margin-top: 8px;
-                overflow: hidden;
-              }
-              #loadingFill {
-                height: 100%;
-                background: #5555cc;
-                width: 0%;
-                transition: width 0.3s;
-              }
-              .footer {
-                margin-top: 16px;
-                color: #555;
-                font-size: 12px;
-              }
-            </style>
-          </head>
-          <body>
-            <h1>Gridlock</h1>
-            <canvas id="canvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
-            <div class="loading" id="loadingText">Loading...</div>
-            <div id="loadingBar"><div id="loadingFill"></div></div>
-            <p class="footer">Mouse drag to move cars</p>
-
-            <script type="text/javascript">
-              var Module = {
-                canvas: document.getElementById('canvas'),
-                setStatus: function(text) {
-                  var el = document.getElementById('loadingText');
-                  var bar = document.getElementById('loadingFill');
-                  if (!text) {
-                    el.style.display = 'none';
-                    document.getElementById('loadingBar').style.display = 'none';
-                    return;
-                  }
-                  el.textContent = text;
-                  var m = text.match(/(\d+(\.\d+)?)\//);
-                  if (m) bar.style.width = (100 - parseInt(m[1])) + '%';
-                }
-              };
-            </script>
-            <script type="text/javascript" src="love.js"></script>
-          </body>
-          </html>
-          HTMLEOF
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: build/web
-
-  release:
-    name: Create Release
-    needs: [build-love, build-macos, build-windows, build-web]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Gridlock v${{ needs.build-love.outputs.version }}
-          body: |
-            ## Gridlock v${{ needs.build-love.outputs.version }}
-
-            ### Downloads
-            - **macOS**: `gridlock-macos.zip` - Extract and run Gridlock.app
-            - **Windows**: `gridlock-windows.zip` - Extract and run gridlock.exe
-            - **Universal**: `gridlock.love` - Requires [Love2D](https://love2d.org) installed
-            - **Web**: Play online at the GitHub Pages link
-          files: |
-            love-file/gridlock.love
-            macos-build/gridlock-macos.zip
-            windows-build/gridlock-windows.zip
 
   deploy-pages:
     name: Deploy to GitHub Pages
