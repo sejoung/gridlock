@@ -143,9 +143,8 @@ jobs:
           # Set exe icon if icon.png exists
           if [ -f assets/icon.png ]; then
             sudo apt-get update && sudo apt-get install -y imagemagick
-            npm install -g rcedit
             convert assets/icon.png -define icon:auto-resize=256,128,64,48,32,16 icon.ico
-            rcedit "${LOVE_DIR}/gridlock.exe" --set-icon icon.ico
+            npx rcedit@1.1.2 "${LOVE_DIR}/gridlock.exe" --set-icon icon.ico
           fi
 
           mv "${LOVE_DIR}" gridlock-windows
