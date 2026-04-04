@@ -23,18 +23,12 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      - name: Convert SVG icon to PNG
-        run: |
-          sudo apt-get update && sudo apt-get install -y librsvg2-bin
-          if [ -f assets/icon.svg ] && [ ! -f assets/icon.png ]; then
-            rsvg-convert -w 1024 -h 1024 assets/icon.svg -o assets/icon.png
-          fi
-
       - name: Create .love file
         run: |
           zip -r gridlock.love . \
             -x ".git/*" ".github/*" ".idea/*" "tools/*" "docs/*" \
-            ".editorconfig" ".gitignore" "LICENSE" "README.md" "assets/icon.svg"
+            ".editorconfig" ".gitignore" "LICENSE" "README.md" \
+            "assets/icon.svg" "assets/icon.ico" "assets/icon.icns"
 
       - name: Upload .love artifact
         uses: actions/upload-artifact@v4
@@ -42,33 +36,23 @@ jobs:
           name: love-file
           path: gridlock.love
 
-      - name: Upload icon for other jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: icon-png
-          path: assets/icon.png
-          if-no-files-found: ignore
-
   build-macos:
     name: Build macOS
     needs: build-love
     runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: assets/icon.icns
+          sparse-checkout-cone-mode: false
+
       - name: Download .love file
         uses: actions/download-artifact@v4
         with:
           name: love-file
 
-      - name: Download icon
-        uses: actions/download-artifact@v4
-        with:
-          name: icon-png
-          path: assets
-        continue-on-error: true
-
       - name: Install Love2D
-        run: |
-          brew install --cask love
+        run: brew install --cask love
 
       - name: Create macOS app bundle
         run: |
@@ -76,29 +60,14 @@ jobs:
           cp -r "$LOVE_APP" Gridlock.app
           cp gridlock.love Gridlock.app/Contents/Resources/
 
-          # Convert icon to .icns if icon.png exists
-          if [ -f assets/icon.png ]; then
-            ICONSET="Gridlock.iconset"
-            mkdir -p "$ICONSET"
-            sips -z 16 16     assets/icon.png --out "${ICONSET}/icon_16x16.png"
-            sips -z 32 32     assets/icon.png --out "${ICONSET}/icon_16x16@2x.png"
-            sips -z 32 32     assets/icon.png --out "${ICONSET}/icon_32x32.png"
-            sips -z 64 64     assets/icon.png --out "${ICONSET}/icon_32x32@2x.png"
-            sips -z 128 128   assets/icon.png --out "${ICONSET}/icon_128x128.png"
-            sips -z 256 256   assets/icon.png --out "${ICONSET}/icon_128x128@2x.png"
-            sips -z 256 256   assets/icon.png --out "${ICONSET}/icon_256x256.png"
-            sips -z 512 512   assets/icon.png --out "${ICONSET}/icon_256x256@2x.png"
-            sips -z 512 512   assets/icon.png --out "${ICONSET}/icon_512x512.png"
-            sips -z 1024 1024 assets/icon.png --out "${ICONSET}/icon_512x512@2x.png"
-            iconutil -c icns "$ICONSET" -o Gridlock.app/Contents/Resources/GameIcon.icns
+          # Use pre-built .icns icon
+          if [ -f assets/icon.icns ]; then
+            cp assets/icon.icns Gridlock.app/Contents/Resources/GameIcon.icns
             plutil -replace CFBundleIconFile -string "GameIcon" Gridlock.app/Contents/Info.plist
-            rm -rf "$ICONSET"
           fi
 
-          # Update Info.plist
           plutil -replace CFBundleName -string "Gridlock" Gridlock.app/Contents/Info.plist
           plutil -replace CFBundleIdentifier -string "com.gridlock.game" Gridlock.app/Contents/Info.plist
-          # Package
           zip -r gridlock-macos.zip Gridlock.app
 
       - name: Upload macOS artifact
@@ -110,45 +79,50 @@ jobs:
   build-windows:
     name: Build Windows
     needs: build-love
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     env:
       LOVE_VERSION: "11.5"
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: assets/icon.ico
+          sparse-checkout-cone-mode: false
+
       - name: Download .love file
         uses: actions/download-artifact@v4
         with:
           name: love-file
 
-      - name: Download icon
-        uses: actions/download-artifact@v4
-        with:
-          name: icon-png
-          path: assets
-        continue-on-error: true
-
       - name: Download Love2D Windows binaries
         run: |
-          curl -L -o love-win.zip \
-            "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-win64.zip"
-          unzip love-win.zip
+          Invoke-WebRequest -Uri "https://github.com/love2d/love/releases/download/$env:LOVE_VERSION/love-$env:LOVE_VERSION-win64.zip" -OutFile love-win.zip
+          Expand-Archive love-win.zip -DestinationPath .
+        shell: pwsh
 
       - name: Create Windows executable
         run: |
-          LOVE_DIR="love-${LOVE_VERSION}-win64"
-          cat "${LOVE_DIR}/love.exe" gridlock.love > "${LOVE_DIR}/gridlock.exe"
-          rm "${LOVE_DIR}/love.exe"
-          rm -f "${LOVE_DIR}/lovec.exe"
-          rm -f "${LOVE_DIR}/changes.txt" "${LOVE_DIR}/readme.txt"
+          $loveDir = "love-$env:LOVE_VERSION-win64"
 
-          # Set exe icon if icon.png exists
-          if [ -f assets/icon.png ]; then
-            sudo apt-get update && sudo apt-get install -y imagemagick
-            convert assets/icon.png -define icon:auto-resize=256,128,64,48,32,16 icon.ico
-            npx rcedit@1.1.2 "${LOVE_DIR}/gridlock.exe" --set-icon icon.ico
-          fi
+          # Merge love.exe + gridlock.love into gridlock.exe
+          $loveExe = [System.IO.File]::ReadAllBytes("$loveDir\love.exe")
+          $loveFile = [System.IO.File]::ReadAllBytes("gridlock.love")
+          $merged = $loveExe + $loveFile
+          [System.IO.File]::WriteAllBytes("$loveDir\gridlock.exe", $merged)
 
-          mv "${LOVE_DIR}" gridlock-windows
-          zip -r gridlock-windows.zip gridlock-windows
+          Remove-Item "$loveDir\love.exe"
+          Remove-Item "$loveDir\lovec.exe" -ErrorAction SilentlyContinue
+          Remove-Item "$loveDir\changes.txt" -ErrorAction SilentlyContinue
+          Remove-Item "$loveDir\readme.txt" -ErrorAction SilentlyContinue
+
+          # Use pre-built .ico icon
+          if (Test-Path "assets\icon.ico") {
+            npm install -g rcedit
+            rcedit "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
+          }
+
+          Rename-Item $loveDir "gridlock-windows"
+          Compress-Archive -Path "gridlock-windows" -DestinationPath "gridlock-windows.zip"
+        shell: pwsh
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -161,17 +135,15 @@ jobs:
     needs: build-love
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: assets/icon.png
+          sparse-checkout-cone-mode: false
+
       - name: Download .love file
         uses: actions/download-artifact@v4
         with:
           name: love-file
-
-      - name: Download icon
-        uses: actions/download-artifact@v4
-        with:
-          name: icon-png
-          path: assets
-        continue-on-error: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -182,7 +154,7 @@ jobs:
         run: |
           npx love.js@11.4.1 gridlock.love build/web -t "Gridlock" -c
 
-          # Copy icon as favicon
+          # Copy pre-built icon as favicon
           if [ -f assets/icon.png ]; then
             cp assets/icon.png build/web/favicon.png
           fi
