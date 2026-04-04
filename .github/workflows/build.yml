@@ -17,7 +17,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Get version
         id: version
@@ -31,7 +31,7 @@ jobs:
             "assets/icon.svg" "assets/icon.ico" "assets/icon.icns"
 
       - name: Upload .love artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: love-file
           path: gridlock.love
@@ -41,22 +41,24 @@ jobs:
     needs: build-love
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           sparse-checkout: assets/icon.icns
           sparse-checkout-cone-mode: false
 
       - name: Download .love file
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: love-file
 
-      - name: Install Love2D
-        run: brew install --cask love
+      - name: Download Love2D
+        run: |
+          curl -L -o love-macos.zip "https://github.com/love2d/love/releases/download/11.5/love-11.5-macos.zip"
+          unzip love-macos.zip
 
       - name: Create macOS app bundle
         run: |
-          LOVE_APP="/Applications/love.app"
+          LOVE_APP="love.app"
           cp -r "$LOVE_APP" Gridlock.app
           cp gridlock.love Gridlock.app/Contents/Resources/
 
@@ -71,7 +73,7 @@ jobs:
           zip -r gridlock-macos.zip Gridlock.app
 
       - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos-build
           path: gridlock-macos.zip
@@ -83,13 +85,13 @@ jobs:
     env:
       LOVE_VERSION: "11.5"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           sparse-checkout: assets/icon.ico
           sparse-checkout-cone-mode: false
 
       - name: Download .love file
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: love-file
 
@@ -125,7 +127,7 @@ jobs:
         shell: pwsh
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-build
           path: gridlock-windows.zip
@@ -135,20 +137,20 @@ jobs:
     needs: build-love
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           sparse-checkout: assets/icon.png
           sparse-checkout-cone-mode: false
 
       - name: Download .love file
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: love-file
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Build with love.js
         run: |
@@ -162,7 +164,7 @@ jobs:
           fi
 
       - name: Upload web artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: web-build
           path: build/web
@@ -176,19 +178,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download web build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: web-build
           path: web
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: web
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
