@@ -116,8 +116,7 @@ jobs:
 
           # Use pre-built .ico icon
           if (Test-Path "assets\icon.ico") {
-            npm install -g rcedit
-            rcedit "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
+            npx rcedit@1.1.2 "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
           }
 
           Rename-Item $loveDir "gridlock-windows"
