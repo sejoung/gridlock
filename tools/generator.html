@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gridlock Level Generator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 28px;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .panels {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .panel {
+    background: #222240;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #333;
+  }
+  .panel-left { flex: 0 0 420px; }
+  .panel-right { flex: 1; min-width: 0; }
+  .panel h2 {
+    font-size: 16px;
+    color: #ccc;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+  }
+
+  /* Controls */
+  .control-group {
+    margin-bottom: 16px;
+  }
+  .control-group label {
+    display: block;
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 6px;
+  }
+  .btn-group {
+    display: flex;
+    gap: 6px;
+  }
+  .btn-group button {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #444;
+    background: #2a2a4a;
+    color: #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .btn-group button:hover { background: #3a3a5a; }
+  .btn-group button.active {
+    background: #4a4a8a;
+    border-color: #7a7aff;
+    color: #fff;
+  }
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.15s;
+    width: 100%;
+  }
+  .btn-primary {
+    background: #5555cc;
+    color: #fff;
+  }
+  .btn-primary:hover { background: #6666dd; }
+  .btn-success {
+    background: #2a7a4a;
+    color: #fff;
+  }
+  .btn-success:hover { background: #3a8a5a; }
+  .btn-danger {
+    background: #8a3333;
+    color: #fff;
+  }
+  .btn-danger:hover { background: #aa4444; }
+  .btn-secondary {
+    background: #3a3a4a;
+    color: #ccc;
+    border: 1px solid #555;
+  }
+  .btn-secondary:hover { background: #4a4a5a; }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .actions .btn { width: auto; flex: 1; }
+
+  /* Board */
+  .board-container {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0;
+  }
+  canvas {
+    border-radius: 8px;
+  }
+
+  /* Info */
+  .info-bar {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .info-item {
+    background: #2a2a4a;
+    padding: 6px 14px;
+    border-radius: 6px;
+  }
+  .info-item span { color: #8a8aff; font-weight: 600; }
+  .diff-easy { color: #5c5; }
+  .diff-medium { color: #cc5; }
+  .diff-hard { color: #c55; }
+
+  /* Level list */
+  .level-list {
+    max-height: 500px;
+    overflow-y: auto;
+    margin-top: 8px;
+  }
+  .level-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 13px;
+  }
+  .level-item:hover { background: #2a2a4a; }
+  .level-item.active { background: #3a3a6a; }
+  .level-num {
+    font-weight: 700;
+    color: #aaa;
+    min-width: 28px;
+  }
+  .level-diff {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    min-width: 60px;
+    text-align: center;
+  }
+  .level-diff.easy { background: #1a3a1a; color: #5c5; }
+  .level-diff.medium { background: #3a3a1a; color: #cc5; }
+  .level-diff.hard { background: #3a1a1a; color: #c55; }
+  .level-moves { color: #888; }
+  .level-cars { color: #666; }
+  .level-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+  }
+  .level-actions button {
+    padding: 3px 8px;
+    font-size: 11px;
+    border: 1px solid #444;
+    background: #2a2a4a;
+    color: #aaa;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .level-actions button:hover { background: #3a3a5a; color: #fff; }
+
+  /* Lua output */
+  .lua-output {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    color: #aaa;
+    white-space: pre;
+    overflow-x: auto;
+    margin-top: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  /* Batch progress */
+  .progress-bar {
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+    display: none;
+  }
+  .progress-bar .fill {
+    height: 100%;
+    background: #5555cc;
+    transition: width 0.2s;
+    width: 0%;
+  }
+  .status {
+    font-size: 12px;
+    color: #888;
+    margin-top: 6px;
+    min-height: 18px;
+  }
+
+  /* Batch count input */
+  .count-input {
+    width: 60px;
+    padding: 8px;
+    border: 1px solid #444;
+    background: #2a2a4a;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+  }
+  .count-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .count-row label {
+    margin-bottom: 0 !important;
+    white-space: nowrap;
+  }
+
+  /* Download all */
+  .download-all {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #333;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 16px;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #444;
+    background: #2a2a4a;
+    color: #888;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .tab:first-child { border-radius: 8px 0 0 8px; }
+  .tab:last-child { border-radius: 0 8px 8px 0; }
+  .tab:hover { background: #3a3a5a; color: #ccc; }
+  .tab.active {
+    background: #4a4a8a;
+    border-color: #7a7aff;
+    color: #fff;
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Import area */
+  .import-zone {
+    border: 2px dashed #444;
+    border-radius: 8px;
+    padding: 32px 20px;
+    text-align: center;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 12px;
+  }
+  .import-zone:hover, .import-zone.dragover {
+    border-color: #7a7aff;
+    background: rgba(90,90,200,0.1);
+    color: #aaa;
+  }
+  .import-zone input { display: none; }
+  .import-zone .icon { font-size: 28px; margin-bottom: 8px; }
+  .import-zone .hint { font-size: 12px; color: #555; margin-top: 6px; }
+
+  /* Analyze results */
+  .analyze-summary {
+    display: flex;
+    gap: 12px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+  .summary-card {
+    background: #2a2a4a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    flex: 1;
+    min-width: 80px;
+    text-align: center;
+  }
+  .summary-card .value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .summary-card .label {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+  }
+  .analyze-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 900px) {
+    .panels { flex-direction: column; }
+    .panel-left { flex: none; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Gridlock Level Generator</h1>
+  <p class="subtitle">Rush Hour-style puzzle level generator with BFS solver</p>
+
+  <div class="panels">
+    <!-- Left Panel: Controls + Preview -->
+    <div class="panel panel-left">
+      <div class="tabs">
+        <div class="tab active" data-tab="generate">Generate</div>
+        <div class="tab" data-tab="analyze">Analyze</div>
+      </div>
+
+      <!-- Generate Tab -->
+      <div class="tab-content active" id="tab-generate">
+        <div class="control-group">
+          <label>Difficulty</label>
+          <div class="btn-group" id="diffGroup">
+            <button data-diff="easy" class="active">Easy</button>
+            <button data-diff="medium">Medium</button>
+            <button data-diff="hard">Hard</button>
+            <button data-diff="mixed">Mixed</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="count-row">
+            <label>Count</label>
+            <input type="number" class="count-input" id="countInput" value="5" min="1" max="50">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="generateBtn">Generate Levels</button>
+        <div class="progress-bar" id="progressBar"><div class="fill" id="progressFill"></div></div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <!-- Analyze Tab -->
+      <div class="tab-content" id="tab-analyze">
+        <div class="import-zone" id="importZone">
+          <div class="icon">+</div>
+          <div>Drop .lua level files here<br>or click to browse</div>
+          <div class="hint">levels/level1.lua ~ level10.lua</div>
+          <input type="file" id="fileInput" multiple accept=".lua">
+        </div>
+        <button class="btn btn-secondary" id="analyzeBtn" disabled>Analyze Loaded Levels</button>
+        <div class="status" id="analyzeStatus"></div>
+
+        <div id="analyzeSummary" style="display:none">
+          <div class="analyze-summary">
+            <div class="summary-card">
+              <div class="value" id="sumTotal">0</div>
+              <div class="label">Total</div>
+            </div>
+            <div class="summary-card">
+              <div class="value diff-easy" id="sumEasy">0</div>
+              <div class="label">Easy</div>
+            </div>
+            <div class="summary-card">
+              <div class="value diff-medium" id="sumMedium">0</div>
+              <div class="label">Medium</div>
+            </div>
+            <div class="summary-card">
+              <div class="value diff-hard" id="sumHard">0</div>
+              <div class="label">Hard</div>
+            </div>
+          </div>
+          <div class="analyze-list" id="analyzeList"></div>
+        </div>
+      </div>
+
+      <!-- Shared: Board Preview -->
+      <div class="board-container">
+        <canvas id="boardCanvas" width="312" height="312"></canvas>
+      </div>
+
+      <div class="info-bar" id="infoBar" style="display:none">
+        <div class="info-item">Moves: <span id="infoMoves">-</span></div>
+        <div class="info-item">Cars: <span id="infoCars">-</span></div>
+        <div class="info-item">Diff: <span id="infoDiff">-</span></div>
+      </div>
+
+      <div class="lua-output" id="luaOutput" style="display:none"></div>
+    </div>
+
+    <!-- Right Panel: Generated Levels -->
+    <div class="panel panel-right">
+      <h2>Generated Levels (<span id="levelCount">0</span>)</h2>
+
+      <div class="level-list" id="levelList">
+        <div style="color:#666; text-align:center; padding:40px;">
+          Click "Generate Levels" to start
+        </div>
+      </div>
+
+      <div class="download-all">
+        <div class="actions">
+          <button class="btn btn-success" id="downloadAllBtn" disabled>Download All (.lua)</button>
+          <button class="btn btn-danger" id="clearBtn" disabled>Clear All</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Car Types (mirrors src/car_types.lua)
+// ============================================================
+const CAR_TYPES = {
+  compact_blue:   { len: 2, color: '#3465a4' },
+  compact_green:  { len: 2, color: '#4e9a06' },
+  compact_orange: { len: 2, color: '#ce5c00' },
+  compact_red:    { len: 2, color: '#cc0000' },
+  coupe_blue:     { len: 2, color: '#204a87' },
+  coupe_green:    { len: 2, color: '#73d216' },
+  coupe_midnight: { len: 2, color: '#2e3436' },
+  coupe_red:      { len: 2, color: '#a40000' },
+  sedan_blue:     { len: 2, color: '#729fcf' },
+  sedan_gray:     { len: 2, color: '#888a85' },
+  sedan_green:    { len: 2, color: '#8ae234' },
+  sedan_red:      { len: 2, color: '#ef2929' },
+  sport_blue:     { len: 2, color: '#3465a4' },
+  sport_green:    { len: 2, color: '#4e9a06' },
+  sport_red:      { len: 2, color: '#cc0000' },
+  sport_yellow:   { len: 2, color: '#edd400' },
+  truck_blue:     { len: 2, color: '#204a87' },
+  truck_cream:    { len: 2, color: '#e9deb8' },
+  truck_green:    { len: 2, color: '#4e9a06' },
+  truck_red:      { len: 2, color: '#a40000' },
+  trailer:        { len: 3, color: '#d3d7cf' },
+};
+
+const TYPES_LEN2 = Object.keys(CAR_TYPES).filter(k => CAR_TYPES[k].len === 2 && k !== 'sport_red');
+const TYPES_LEN3 = Object.keys(CAR_TYPES).filter(k => CAR_TYPES[k].len === 3);
+const GRID = 6;
+
+const PRESETS = {
+  easy:   { minCars: 4, maxCars: 6,  minMoves: 3,  maxMoves: 8 },
+  medium: { minCars: 6, maxCars: 9,  minMoves: 9,  maxMoves: 16 },
+  hard:   { minCars: 8, maxCars: 12, minMoves: 17, maxMoves: 40 },
+};
+
+// ============================================================
+// BFS Solver
+// ============================================================
+function encodeState(cars) {
+  return cars.map(c => `${c.x},${c.y}`).join('|');
+}
+
+function copyCars(cars) {
+  return cars.map(c => ({ ...c }));
+}
+
+function isOccupied(cars, gx, gy, skip) {
+  for (let i = 0; i < cars.length; i++) {
+    if (i === skip) continue;
+    const c = cars[i];
+    for (let s = 0; s < c.len; s++) {
+      const cx = c.dir === 'H' ? c.x + s : c.x;
+      const cy = c.dir === 'H' ? c.y : c.y + s;
+      if (cx === gx && cy === gy) return true;
+    }
+  }
+  return false;
+}
+
+function isCleared(cars, exitRow) {
+  for (const c of cars) {
+    if (c.isGoal && c.x + c.len - 1 > GRID && c.y === exitRow) return true;
+  }
+  return false;
+}
+
+function getMoves(cars) {
+  const moves = [];
+  for (let i = 0; i < cars.length; i++) {
+    const c = cars[i];
+    if (c.dir === 'H') {
+      // Right
+      for (let step = 1; ; step++) {
+        const nx = c.x + step;
+        const tail = nx + c.len - 1;
+        if (c.isGoal && tail > GRID) {
+          let blocked = false;
+          for (let s = 0; s < c.len; s++) {
+            const cx = nx + s;
+            if (cx <= GRID && isOccupied(cars, cx, c.y, i)) { blocked = true; break; }
+          }
+          if (!blocked) moves.push([i, step, 0]);
+          break;
+        }
+        if (tail > GRID) break;
+        if (isOccupied(cars, tail, c.y, i)) break;
+        moves.push([i, step, 0]);
+      }
+      // Left
+      for (let step = 1; ; step++) {
+        const nx = c.x - step;
+        if (nx < 1) break;
+        if (isOccupied(cars, nx, c.y, i)) break;
+        moves.push([i, -step, 0]);
+      }
+    } else {
+      // Down
+      for (let step = 1; ; step++) {
+        const ny = c.y + step;
+        if (ny + c.len - 1 > GRID) break;
+        if (isOccupied(cars, c.x, ny + c.len - 1, i)) break;
+        moves.push([i, 0, step]);
+      }
+      // Up
+      for (let step = 1; ; step++) {
+        const ny = c.y - step;
+        if (ny < 1) break;
+        if (isOccupied(cars, c.x, ny, i)) break;
+        moves.push([i, 0, -step]);
+      }
+    }
+  }
+  return moves;
+}
+
+function solve(levelData) {
+  const exitRow = levelData.exit.row;
+  const initCars = levelData.cars.map(c => ({
+    x: c.x, y: c.y, len: c.len, dir: c.dir, isGoal: c.id === 'goal'
+  }));
+
+  const visited = new Set();
+  const queue = [{ cars: initCars, moves: 0 }];
+  visited.add(encodeState(initCars));
+
+  let iter = 0;
+  const maxIter = 500000;
+
+  while (queue.length > 0 && iter < maxIter) {
+    iter++;
+    const current = queue.shift();
+
+    if (isCleared(current.cars, exitRow)) return current.moves;
+
+    for (const [ci, dx, dy] of getMoves(current.cars)) {
+      const newCars = copyCars(current.cars);
+      newCars[ci].x += dx;
+      newCars[ci].y += dy;
+
+      if (isCleared(newCars, exitRow)) return current.moves + 1;
+
+      const state = encodeState(newCars);
+      if (!visited.has(state)) {
+        visited.add(state);
+        queue.push({ cars: newCars, moves: current.moves + 1 });
+      }
+    }
+  }
+  return -1;
+}
+
+function difficulty(minMoves) {
+  if (minMoves <= 0) return 'invalid';
+  if (minMoves <= 8) return 'easy';
+  if (minMoves <= 16) return 'medium';
+  return 'hard';
+}
+
+// ============================================================
+// Level Generator
+// ============================================================
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function buildGrid(cars) {
+  const grid = Array.from({ length: GRID + 1 }, () => Array(GRID + 1).fill(false));
+  for (const c of cars) {
+    for (let s = 0; s < c.len; s++) {
+      const cx = c.dir === 'H' ? c.x + s : c.x;
+      const cy = c.dir === 'H' ? c.y : c.y + s;
+      if (cx >= 1 && cx <= GRID && cy >= 1 && cy <= GRID) grid[cy][cx] = true;
+    }
+  }
+  return grid;
+}
+
+function canPlace(grid, x, y, len, dir) {
+  for (let s = 0; s < len; s++) {
+    const cx = dir === 'H' ? x + s : x;
+    const cy = dir === 'H' ? y : y + s;
+    if (cx < 1 || cx > GRID || cy < 1 || cy > GRID) return false;
+    if (grid[cy][cx]) return false;
+  }
+  return true;
+}
+
+function placeCar(grid, x, y, len, dir) {
+  for (let s = 0; s < len; s++) {
+    const cx = dir === 'H' ? x + s : x;
+    const cy = dir === 'H' ? y : y + s;
+    grid[cy][cx] = true;
+  }
+}
+
+function generateAttempt(numCars, exitRow) {
+  const cars = [];
+  const goalX = Math.floor(Math.random() * (GRID - 1)) + 1;
+  cars.push({
+    id: 'goal', x: goalX, y: exitRow, len: 2, dir: 'H',
+    isGoal: true, type: 'sport_red'
+  });
+
+  const grid = buildGrid(cars);
+  const usedTypes = new Set(['sport_red']);
+
+  let attempts = 0;
+  while (cars.length < numCars && attempts < 200) {
+    attempts++;
+    const dir = Math.random() < 0.5 ? 'H' : 'V';
+    const len = Math.random() < 0.15 ? 3 : 2;
+    const x = dir === 'H'
+      ? Math.floor(Math.random() * (GRID - len + 1)) + 1
+      : Math.floor(Math.random() * GRID) + 1;
+    const y = dir === 'H'
+      ? Math.floor(Math.random() * GRID) + 1
+      : Math.floor(Math.random() * (GRID - len + 1)) + 1;
+
+    if (canPlace(grid, x, y, len, dir)) {
+      const pool = len === 3 ? TYPES_LEN3 : TYPES_LEN2;
+      let available = pool.filter(t => !usedTypes.has(t));
+      if (available.length === 0) available = pool;
+      const type = pick(available);
+      usedTypes.add(type);
+
+      cars.push({
+        id: 'c' + cars.length,
+        x, y, len, dir, type
+      });
+      placeCar(grid, x, y, len, dir);
+    }
+  }
+  return cars;
+}
+
+function generateLevel(diff, levelId) {
+  const preset = PRESETS[diff] || PRESETS.medium;
+  const exitRow = 3;
+
+  for (let t = 0; t < 3000; t++) {
+    const numCars = Math.floor(Math.random() * (preset.maxCars - preset.minCars + 1)) + preset.minCars;
+    const cars = generateAttempt(numCars, exitRow);
+
+    const solverData = {
+      exit: { side: 'right', row: exitRow },
+      cars: cars.map(c => ({ id: c.id, x: c.x, y: c.y, len: c.len, dir: c.dir }))
+    };
+
+    const minMoves = solve(solverData);
+    if (minMoves >= preset.minMoves && minMoves <= preset.maxMoves) {
+      return {
+        id: levelId || 1,
+        exit: { side: 'right', row: exitRow },
+        cars: cars.map(c => ({ id: c.id, x: c.x, y: c.y, dir: c.dir, type: c.type, len: CAR_TYPES[c.type].len })),
+        minMoves,
+        difficulty: diff,
+      };
+    }
+  }
+  return null;
+}
+
+// ============================================================
+// Export to Lua
+// ============================================================
+function toLua(level, id) {
+  const lines = ['return {'];
+  lines.push(`    id = ${id},`);
+  lines.push(`    exit = { side = "right", row = ${level.exit.row} },`);
+  lines.push(`    -- minMoves = ${level.minMoves}, difficulty = ${level.difficulty}`);
+  lines.push('    cars = {');
+  for (const c of level.cars) {
+    lines.push(`        { id = "${c.id}", x = ${c.x}, y = ${c.y}, dir = "${c.dir}", type = "${c.type}" },`);
+  }
+  lines.push('    }');
+  lines.push('}');
+  return lines.join('\n');
+}
+
+// ============================================================
+// Canvas Drawing
+// ============================================================
+const canvas = document.getElementById('boardCanvas');
+const ctx = canvas.getContext('2d');
+const CELL = 48;
+const PAD = 12;
+
+function drawBoard(level) {
+  const W = GRID * CELL + PAD * 2;
+  canvas.width = W;
+  canvas.height = W;
+
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(0, 0, W, W);
+
+  // Grid
+  ctx.strokeStyle = '#3a3a4a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= GRID; i++) {
+    ctx.beginPath();
+    ctx.moveTo(PAD + i * CELL, PAD);
+    ctx.lineTo(PAD + i * CELL, PAD + GRID * CELL);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(PAD, PAD + i * CELL);
+    ctx.lineTo(PAD + GRID * CELL, PAD + i * CELL);
+    ctx.stroke();
+  }
+
+  // Exit
+  if (level && level.exit) {
+    const ey = PAD + (level.exit.row - 1) * CELL;
+    const ex = PAD + GRID * CELL;
+    ctx.fillStyle = 'rgba(220,60,60,0.4)';
+    ctx.fillRect(ex, ey + 6, 10, CELL - 12);
+    ctx.fillStyle = 'rgba(220,60,60,0.6)';
+    ctx.beginPath();
+    ctx.moveTo(ex + 18, ey + CELL / 2);
+    ctx.lineTo(ex + 8, ey + 8);
+    ctx.lineTo(ex + 8, ey + CELL - 8);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Cars
+  if (level && level.cars) {
+    for (const c of level.cars) {
+      const carType = CAR_TYPES[c.type];
+      const len = carType ? carType.len : (c.len || 2);
+      const color = carType ? carType.color : '#555';
+      const w = c.dir === 'H' ? len * CELL - 6 : CELL - 6;
+      const h = c.dir === 'H' ? CELL - 6 : len * CELL - 6;
+      const sx = PAD + (c.x - 1) * CELL + 3;
+      const sy = PAD + (c.y - 1) * CELL + 3;
+
+      // Goal car is always red
+      ctx.fillStyle = c.id === 'goal' ? '#cc2222' : color;
+      roundRect(ctx, sx, sy, w, h, 5);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, sx, sy, w, h, 5);
+      ctx.stroke();
+
+      // Label
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(c.id === 'goal' ? 'G' : c.id.replace('c', ''), sx + w / 2, sy + h / 2);
+    }
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ============================================================
+// UI Logic
+// ============================================================
+let selectedDifficulty = 'easy';
+let generatedLevels = [];
+let selectedIndex = -1;
+
+// Difficulty buttons
+document.querySelectorAll('#diffGroup button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#diffGroup button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedDifficulty = btn.dataset.diff;
+  });
+});
+
+// Generate
+const generateBtn = document.getElementById('generateBtn');
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+const statusEl = document.getElementById('status');
+
+generateBtn.addEventListener('click', async () => {
+  const count = parseInt(document.getElementById('countInput').value) || 5;
+  generateBtn.disabled = true;
+  progressBar.style.display = 'block';
+  statusEl.textContent = 'Generating...';
+
+  const startId = generatedLevels.length + 1;
+
+  // Use setTimeout to keep UI responsive
+  let generated = 0;
+  for (let i = 0; i < count; i++) {
+    let diff = selectedDifficulty;
+    if (diff === 'mixed') {
+      const r = Math.random();
+      diff = r < 0.35 ? 'easy' : r < 0.75 ? 'medium' : 'hard';
+    }
+
+    statusEl.textContent = `Generating level ${startId + i} (${diff})...`;
+    progressFill.style.width = ((i / count) * 100) + '%';
+
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    const level = generateLevel(diff, startId + i);
+    if (level) {
+      generatedLevels.push(level);
+      generated++;
+    }
+  }
+
+  progressFill.style.width = '100%';
+  statusEl.textContent = `Generated ${generated}/${count} levels`;
+  generateBtn.disabled = false;
+
+  setTimeout(() => { progressBar.style.display = 'none'; }, 500);
+
+  renderLevelList();
+  updateButtons();
+
+  if (generatedLevels.length > 0) {
+    selectLevel(generatedLevels.length - 1);
+  }
+});
+
+function renderLevelList() {
+  const list = document.getElementById('levelList');
+  document.getElementById('levelCount').textContent = generatedLevels.length;
+
+  if (generatedLevels.length === 0) {
+    list.innerHTML = '<div style="color:#666;text-align:center;padding:40px;">Click "Generate Levels" to start</div>';
+    return;
+  }
+
+  list.innerHTML = generatedLevels.map((level, i) => {
+    const diff = level.difficulty;
+    return `
+      <div class="level-item ${i === selectedIndex ? 'active' : ''}" onclick="selectLevel(${i})">
+        <span class="level-num">#${i + 1}</span>
+        <span class="level-diff ${diff}">${diff}</span>
+        <span class="level-moves">${level.minMoves} moves</span>
+        <span class="level-cars">${level.cars.length} cars</span>
+        <div class="level-actions">
+          <button onclick="event.stopPropagation(); downloadLevel(${i})">Download</button>
+          <button onclick="event.stopPropagation(); removeLevel(${i})">Remove</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectLevel(index) {
+  selectedIndex = index;
+  const level = generatedLevels[index];
+  drawBoard(level);
+  renderLevelList();
+
+  document.getElementById('infoBar').style.display = 'flex';
+  document.getElementById('infoMoves').textContent = level.minMoves;
+  document.getElementById('infoCars').textContent = level.cars.length;
+
+  const diffEl = document.getElementById('infoDiff');
+  diffEl.textContent = level.difficulty;
+  diffEl.className = `diff-${level.difficulty}`;
+
+  const luaEl = document.getElementById('luaOutput');
+  luaEl.style.display = 'block';
+  luaEl.textContent = toLua(level, index + 1);
+}
+
+function removeLevel(index) {
+  generatedLevels.splice(index, 1);
+  if (selectedIndex >= generatedLevels.length) selectedIndex = generatedLevels.length - 1;
+  renderLevelList();
+  updateButtons();
+  if (selectedIndex >= 0) selectLevel(selectedIndex);
+  else {
+    drawBoard(null);
+    document.getElementById('infoBar').style.display = 'none';
+    document.getElementById('luaOutput').style.display = 'none';
+  }
+}
+
+function downloadLevel(index) {
+  const level = generatedLevels[index];
+  const lua = toLua(level, index + 1) + '\n';
+  const blob = new Blob([lua], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `level${index + 1}.lua`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// Download all as zip-like (individual files)
+document.getElementById('downloadAllBtn').addEventListener('click', () => {
+  for (let i = 0; i < generatedLevels.length; i++) {
+    setTimeout(() => downloadLevel(i), i * 100);
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  generatedLevels = [];
+  selectedIndex = -1;
+  renderLevelList();
+  updateButtons();
+  drawBoard(null);
+  document.getElementById('infoBar').style.display = 'none';
+  document.getElementById('luaOutput').style.display = 'none';
+  statusEl.textContent = '';
+});
+
+function updateButtons() {
+  document.getElementById('downloadAllBtn').disabled = generatedLevels.length === 0;
+  document.getElementById('clearBtn').disabled = generatedLevels.length === 0;
+}
+
+// ============================================================
+// Tabs
+// ============================================================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ============================================================
+// Analyze: Lua file import & parsing
+// ============================================================
+let importedLevels = [];
+
+// Parse a Lua level file into JS object
+function parseLuaLevel(text, filename) {
+  try {
+    // Extract id
+    const idMatch = text.match(/id\s*=\s*(\d+)/);
+    const id = idMatch ? parseInt(idMatch[1]) : 0;
+
+    // Extract exit row
+    const exitMatch = text.match(/row\s*=\s*(\d+)/);
+    const exitRow = exitMatch ? parseInt(exitMatch[1]) : 3;
+
+    // Extract cars
+    const cars = [];
+    const carRegex = /\{\s*id\s*=\s*"([^"]+)"\s*,\s*x\s*=\s*(\d+)\s*,\s*y\s*=\s*(\d+)\s*,\s*dir\s*=\s*"([HV])"\s*,\s*type\s*=\s*"([^"]+)"\s*\}/g;
+    let match;
+    while ((match = carRegex.exec(text)) !== null) {
+      const type = match[5];
+      const len = CAR_TYPES[type] ? CAR_TYPES[type].len : 2;
+      cars.push({
+        id: match[1],
+        x: parseInt(match[2]),
+        y: parseInt(match[3]),
+        dir: match[4],
+        type: type,
+        len: len,
+      });
+    }
+
+    if (cars.length === 0) return null;
+
+    return {
+      id: id,
+      exit: { side: 'right', row: exitRow },
+      cars: cars,
+      filename: filename,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// File import
+const importZone = document.getElementById('importZone');
+const fileInput = document.getElementById('fileInput');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const analyzeStatus = document.getElementById('analyzeStatus');
+
+importZone.addEventListener('click', () => fileInput.click());
+importZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  importZone.classList.add('dragover');
+});
+importZone.addEventListener('dragleave', () => {
+  importZone.classList.remove('dragover');
+});
+importZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  importZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', (e) => {
+  handleFiles(e.target.files);
+});
+
+function handleFiles(files) {
+  importedLevels = [];
+  const fileArray = Array.from(files).filter(f => f.name.endsWith('.lua'));
+  fileArray.sort((a, b) => {
+    const numA = parseInt(a.name.match(/\d+/) || [0]);
+    const numB = parseInt(b.name.match(/\d+/) || [0]);
+    return numA - numB;
+  });
+
+  let loaded = 0;
+  for (const file of fileArray) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const level = parseLuaLevel(e.target.result, file.name);
+      if (level) importedLevels.push(level);
+      loaded++;
+      if (loaded === fileArray.length) {
+        importedLevels.sort((a, b) => a.id - b.id);
+        analyzeStatus.textContent = `${importedLevels.length} level files loaded`;
+        analyzeBtn.disabled = importedLevels.length === 0;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  if (fileArray.length === 0) {
+    analyzeStatus.textContent = 'No .lua files found';
+  }
+}
+
+// Analyze
+analyzeBtn.addEventListener('click', async () => {
+  analyzeBtn.disabled = true;
+  analyzeStatus.textContent = 'Analyzing...';
+
+  const results = [];
+  let easyCount = 0, mediumCount = 0, hardCount = 0;
+
+  for (let i = 0; i < importedLevels.length; i++) {
+    const level = importedLevels[i];
+    analyzeStatus.textContent = `Analyzing ${level.filename}...`;
+    await new Promise(resolve => setTimeout(resolve, 5));
+
+    const solverData = {
+      exit: level.exit,
+      cars: level.cars.map(c => ({
+        id: c.id, x: c.x, y: c.y,
+        len: c.len || (CAR_TYPES[c.type] ? CAR_TYPES[c.type].len : 2),
+        dir: c.dir
+      }))
+    };
+
+    const minMoves = solve(solverData);
+    const diff = difficulty(minMoves);
+
+    // Check overlaps
+    const grid = {};
+    let overlaps = [];
+    for (const c of level.cars) {
+      const len = c.len || (CAR_TYPES[c.type] ? CAR_TYPES[c.type].len : 2);
+      for (let s = 0; s < len; s++) {
+        const cx = c.dir === 'H' ? c.x + s : c.x;
+        const cy = c.dir === 'H' ? c.y : c.y + s;
+        const key = `${cx},${cy}`;
+        if (grid[key]) {
+          overlaps.push(`(${cx},${cy}): ${grid[key]} & ${c.id}`);
+        } else {
+          grid[key] = c.id;
+        }
+      }
+    }
+
+    level.minMoves = minMoves;
+    level.difficulty = diff;
+    level.overlaps = overlaps;
+
+    if (diff === 'easy') easyCount++;
+    else if (diff === 'medium') mediumCount++;
+    else if (diff === 'hard') hardCount++;
+
+    results.push(level);
+  }
+
+  // Show summary
+  document.getElementById('analyzeSummary').style.display = 'block';
+  document.getElementById('sumTotal').textContent = results.length;
+  document.getElementById('sumEasy').textContent = easyCount;
+  document.getElementById('sumMedium').textContent = mediumCount;
+  document.getElementById('sumHard').textContent = hardCount;
+
+  // Show list
+  const listEl = document.getElementById('analyzeList');
+  listEl.innerHTML = results.map((level, i) => {
+    const diff = level.difficulty;
+    const hasIssue = level.overlaps.length > 0 || level.minMoves < 0;
+    const issueText = level.minMoves < 0
+      ? '<span style="color:#c55;margin-left:8px">UNSOLVABLE</span>'
+      : level.overlaps.length > 0
+        ? `<span style="color:#c55;margin-left:8px">OVERLAP: ${level.overlaps.join(', ')}</span>`
+        : '';
+
+    return `
+      <div class="level-item" onclick="selectAnalyzedLevel(${i})"
+           style="${hasIssue ? 'border-left:3px solid #c55;' : ''}">
+        <span class="level-num">#${level.id}</span>
+        <span class="level-diff ${diff}">${diff}</span>
+        <span class="level-moves">${level.minMoves >= 0 ? level.minMoves + ' moves' : 'N/A'}</span>
+        <span class="level-cars">${level.cars.length} cars</span>
+        ${issueText}
+      </div>
+    `;
+  }).join('');
+
+  analyzeStatus.textContent = `Analyzed ${results.length} levels`;
+  analyzeBtn.disabled = false;
+});
+
+function selectAnalyzedLevel(index) {
+  const level = importedLevels[index];
+  drawBoard(level);
+
+  document.getElementById('infoBar').style.display = 'flex';
+  document.getElementById('infoMoves').textContent = level.minMoves >= 0 ? level.minMoves : 'N/A';
+  document.getElementById('infoCars').textContent = level.cars.length;
+
+  const diffEl = document.getElementById('infoDiff');
+  diffEl.textContent = level.difficulty;
+  diffEl.className = `diff-${level.difficulty}`;
+
+  document.getElementById('luaOutput').style.display = 'none';
+
+  // Highlight in list
+  document.querySelectorAll('#analyzeList .level-item').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+}
+
+// Init
+drawBoard(null);
+</script>
+
+</body>
+</html>

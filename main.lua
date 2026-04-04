@@ -2,6 +2,14 @@ local game = require("src.game")
 
 function love.load()
     love.graphics.setBackgroundColor(0.15, 0.15, 0.18)
+
+    -- Window icon
+    local iconInfo = love.filesystem.getInfo("assets/icon.png")
+    if iconInfo then
+        local iconData = love.image.newImageData("assets/icon.png")
+        love.window.setIcon(iconData)
+    end
+
     game.load()
 end
 

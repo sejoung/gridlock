@@ -1,0 +1,327 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-love:
+    name: Build .love file
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Convert SVG icon to PNG
+        run: |
+          sudo apt-get update && sudo apt-get install -y librsvg2-bin
+          if [ -f assets/icon.svg ] && [ ! -f assets/icon.png ]; then
+            rsvg-convert -w 1024 -h 1024 assets/icon.svg -o assets/icon.png
+          fi
+
+      - name: Create .love file
+        run: |
+          zip -r gridlock.love . \
+            -x ".git/*" ".github/*" ".idea/*" "tools/*" "docs/*" \
+            ".editorconfig" ".gitignore" "LICENSE" "README.md" "assets/icon.svg"
+
+      - name: Upload .love artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: love-file
+          path: gridlock.love
+
+      - name: Upload icon for other jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: icon-png
+          path: assets/icon.png
+          if-no-files-found: ignore
+
+  build-macos:
+    name: Build macOS
+    needs: build-love
+    runs-on: macos-latest
+    steps:
+      - name: Download .love file
+        uses: actions/download-artifact@v4
+        with:
+          name: love-file
+
+      - name: Download icon
+        uses: actions/download-artifact@v4
+        with:
+          name: icon-png
+          path: assets
+        continue-on-error: true
+
+      - name: Install Love2D
+        run: |
+          brew install --cask love
+
+      - name: Create macOS app bundle
+        run: |
+          LOVE_APP="/Applications/love.app"
+          cp -r "$LOVE_APP" Gridlock.app
+          cp gridlock.love Gridlock.app/Contents/Resources/
+
+          # Convert icon to .icns if icon.png exists
+          if [ -f assets/icon.png ]; then
+            ICONSET="Gridlock.iconset"
+            mkdir -p "$ICONSET"
+            sips -z 16 16     assets/icon.png --out "${ICONSET}/icon_16x16.png"
+            sips -z 32 32     assets/icon.png --out "${ICONSET}/icon_16x16@2x.png"
+            sips -z 32 32     assets/icon.png --out "${ICONSET}/icon_32x32.png"
+            sips -z 64 64     assets/icon.png --out "${ICONSET}/icon_32x32@2x.png"
+            sips -z 128 128   assets/icon.png --out "${ICONSET}/icon_128x128.png"
+            sips -z 256 256   assets/icon.png --out "${ICONSET}/icon_128x128@2x.png"
+            sips -z 256 256   assets/icon.png --out "${ICONSET}/icon_256x256.png"
+            sips -z 512 512   assets/icon.png --out "${ICONSET}/icon_256x256@2x.png"
+            sips -z 512 512   assets/icon.png --out "${ICONSET}/icon_512x512.png"
+            sips -z 1024 1024 assets/icon.png --out "${ICONSET}/icon_512x512@2x.png"
+            iconutil -c icns "$ICONSET" -o Gridlock.app/Contents/Resources/GameIcon.icns
+            plutil -replace CFBundleIconFile -string "GameIcon" Gridlock.app/Contents/Info.plist
+            rm -rf "$ICONSET"
+          fi
+
+          # Update Info.plist
+          plutil -replace CFBundleName -string "Gridlock" Gridlock.app/Contents/Info.plist
+          plutil -replace CFBundleIdentifier -string "com.gridlock.game" Gridlock.app/Contents/Info.plist
+          # Package
+          zip -r gridlock-macos.zip Gridlock.app
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: gridlock-macos.zip
+
+  build-windows:
+    name: Build Windows
+    needs: build-love
+    runs-on: ubuntu-latest
+    env:
+      LOVE_VERSION: "11.5"
+    steps:
+      - name: Download .love file
+        uses: actions/download-artifact@v4
+        with:
+          name: love-file
+
+      - name: Download icon
+        uses: actions/download-artifact@v4
+        with:
+          name: icon-png
+          path: assets
+        continue-on-error: true
+
+      - name: Download Love2D Windows binaries
+        run: |
+          curl -L -o love-win.zip \
+            "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-win64.zip"
+          unzip love-win.zip
+
+      - name: Create Windows executable
+        run: |
+          LOVE_DIR="love-${LOVE_VERSION}-win64"
+          cat "${LOVE_DIR}/love.exe" gridlock.love > "${LOVE_DIR}/gridlock.exe"
+          rm "${LOVE_DIR}/love.exe"
+          rm -f "${LOVE_DIR}/lovec.exe"
+          rm -f "${LOVE_DIR}/changes.txt" "${LOVE_DIR}/readme.txt"
+
+          # Set exe icon if icon.png exists
+          if [ -f assets/icon.png ]; then
+            sudo apt-get update && sudo apt-get install -y imagemagick
+            npm install -g rcedit
+            convert assets/icon.png -define icon:auto-resize=256,128,64,48,32,16 icon.ico
+            rcedit "${LOVE_DIR}/gridlock.exe" --set-icon icon.ico
+          fi
+
+          mv "${LOVE_DIR}" gridlock-windows
+          zip -r gridlock-windows.zip gridlock-windows
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: gridlock-windows.zip
+
+  build-web:
+    name: Build Web (love.js)
+    needs: build-love
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download .love file
+        uses: actions/download-artifact@v4
+        with:
+          name: love-file
+
+      - name: Download icon
+        uses: actions/download-artifact@v4
+        with:
+          name: icon-png
+          path: assets
+        continue-on-error: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build with love.js
+        run: |
+          npx love.js@0.9.0 gridlock.love build/web -t "Gridlock" -c
+
+          # Copy icon as favicon
+          if [ -f assets/icon.png ]; then
+            cp assets/icon.png build/web/favicon.png
+          fi
+
+          # Create custom index.html
+          cat > build/web/index.html << 'HTMLEOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Gridlock - A Parking Puzzle</title>
+            <link rel="icon" type="image/png" href="favicon.png">
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body {
+                background: #1a1a2e;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                font-family: -apple-system, sans-serif;
+                color: #e0e0e0;
+              }
+              h1 { margin-bottom: 16px; font-size: 24px; }
+              canvas {
+                border: 2px solid #333;
+                border-radius: 8px;
+              }
+              .loading {
+                color: #888;
+                margin-top: 16px;
+                font-size: 14px;
+              }
+              #loadingBar {
+                width: 300px;
+                height: 6px;
+                background: #333;
+                border-radius: 3px;
+                margin-top: 8px;
+                overflow: hidden;
+              }
+              #loadingFill {
+                height: 100%;
+                background: #5555cc;
+                width: 0%;
+                transition: width 0.3s;
+              }
+              .footer {
+                margin-top: 16px;
+                color: #555;
+                font-size: 12px;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Gridlock</h1>
+            <canvas id="canvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
+            <div class="loading" id="loadingText">Loading...</div>
+            <div id="loadingBar"><div id="loadingFill"></div></div>
+            <p class="footer">Mouse drag to move cars</p>
+
+            <script type="text/javascript">
+              var Module = {
+                canvas: document.getElementById('canvas'),
+                setStatus: function(text) {
+                  var el = document.getElementById('loadingText');
+                  var bar = document.getElementById('loadingFill');
+                  if (!text) {
+                    el.style.display = 'none';
+                    document.getElementById('loadingBar').style.display = 'none';
+                    return;
+                  }
+                  el.textContent = text;
+                  var m = text.match(/(\d+(\.\d+)?)\//);
+                  if (m) bar.style.width = (100 - parseInt(m[1])) + '%';
+                }
+              };
+            </script>
+            <script type="text/javascript" src="love.js"></script>
+          </body>
+          </html>
+          HTMLEOF
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+  release:
+    name: Create Release
+    needs: [build-love, build-macos, build-windows, build-web]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Gridlock v${{ needs.build-love.outputs.version }}
+          body: |
+            ## Gridlock v${{ needs.build-love.outputs.version }}
+
+            ### Downloads
+            - **macOS**: `gridlock-macos.zip` - Extract and run Gridlock.app
+            - **Windows**: `gridlock-windows.zip` - Extract and run gridlock.exe
+            - **Universal**: `gridlock.love` - Requires [Love2D](https://love2d.org) installed
+            - **Web**: Play online at the GitHub Pages link
+          files: |
+            love-file/gridlock.love
+            macos-build/gridlock-macos.zip
+            windows-build/gridlock-windows.zip
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: web
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
