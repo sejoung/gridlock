@@ -131,6 +131,21 @@ function ui.drawHUD(levelNum, moveCount)
     drawButton("Menu", 690, 560, smallBtn, 30)
 end
 
+function ui.hudClick(x, y, game)
+    local smallBtn = 80
+    if isInside(x, y, 20, 560, smallBtn, 30) then
+        game.undo()
+        return true
+    elseif isInside(x, y, 110, 560, smallBtn, 30) then
+        game.reset()
+        return true
+    elseif isInside(x, y, 690, 560, smallBtn, 30) then
+        game.state = "title"
+        return true
+    end
+    return false
+end
+
 -- Clear Screen
 
 function ui.drawClear(levelNum, moveCount)

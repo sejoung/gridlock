@@ -86,7 +86,9 @@ function game.mousepressed(x, y, button)
     elseif game.state == "level_select" then
         ui.levelSelectClick(x, y, game)
     elseif game.state == "playing" then
-        input.mousepressed(x, y, button)
+        if not ui.hudClick(x, y, game) then
+            input.mousepressed(x, y, button)
+        end
     elseif game.state == "clear" then
         ui.clearClick(x, y, game)
     end
