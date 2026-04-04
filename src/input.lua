@@ -1,4 +1,6 @@
 local input = {}
+local anim = require("src.anim")
+local sound = require("src.sound")
 
 local board = nil
 local onCarMoved = nil
@@ -17,7 +19,7 @@ function input.init(b, callbacks)
 end
 
 function input.update(dt)
-    -- Nothing needed per frame for now
+    anim.update(dt)
 end
 
 function input.mousepressed(x, y, button)
@@ -38,6 +40,7 @@ function input.mousepressed(x, y, button)
         selectedCar.selected = true
         dragging = true
         dragStartX, dragStartY = x, y
+        sound.play("select")
     end
 end
 
@@ -77,11 +80,18 @@ function input.mousemoved(x, y, dx, dy)
             local snap = board.snapshot()
             selectedCar.x = selectedCar.x + moveX
             selectedCar.y = selectedCar.y + moveY
+            anim.startMove(selectedCar.id, moveX, moveY, board.CELL_SIZE)
+            sound.play("move")
             onCarMoved(snap)
 
             if board.checkClear() then
+                sound.play("clear")
                 onClear()
             end
+        else
+            -- Invalid move feedback
+            anim.startShake(selectedCar.id, selectedCar.dir)
+            sound.play("invalid")
         end
         dragStartX, dragStartY = x, y
     end

@@ -8,6 +8,7 @@ board.OFFSET_X = 0
 board.OFFSET_Y = 0
 board.cars = {}
 board.exit = nil
+board.exitPulse = 0  -- for exit glow animation
 
 function board.init(levelData)
     -- Center the board in the window
@@ -17,10 +18,15 @@ function board.init(levelData)
 
     board.exit = levelData.exit
     board.cars = {}
+    board.exitPulse = 0
 
     for _, carData in ipairs(levelData.cars) do
         table.insert(board.cars, car.new(carData))
     end
+end
+
+function board.update(dt)
+    board.exitPulse = board.exitPulse + dt * 3
 end
 
 function board.snapshot()
@@ -124,17 +130,28 @@ function board.draw()
         love.graphics.line(board.OFFSET_X, y, board.OFFSET_X + board.GRID_SIZE * board.CELL_SIZE, y)
     end
 
-    -- Draw exit
+    -- Draw exit with pulsing glow
     if board.exit and board.exit.side == "right" then
-        love.graphics.setColor(0.9, 0.3, 0.3, 0.6)
+        local pulse = 0.5 + 0.5 * math.sin(board.exitPulse)
         local ex = board.OFFSET_X + board.GRID_SIZE * board.CELL_SIZE
         local ey = board.OFFSET_Y + (board.exit.row - 1) * board.CELL_SIZE
-        love.graphics.rectangle("fill", ex, ey + 10, 16, board.CELL_SIZE - 20)
+
+        -- Glow behind
+        love.graphics.setColor(0.9, 0.3, 0.3, 0.15 + 0.15 * pulse)
+        love.graphics.rectangle("fill", ex - 4, ey, 28, board.CELL_SIZE, 4, 4)
+
+        -- Exit bar
+        love.graphics.setColor(0.9, 0.3, 0.3, 0.5 + 0.3 * pulse)
+        love.graphics.rectangle("fill", ex, ey + 8, 12, board.CELL_SIZE - 16, 3, 3)
+
         -- Arrow
+        love.graphics.setColor(1, 0.4, 0.4, 0.6 + 0.4 * pulse)
+        local arrowX = ex + 12 + 3 * pulse
+        local centerY = ey + board.CELL_SIZE / 2
         love.graphics.polygon("fill",
-            ex + 16, ey + board.CELL_SIZE / 2,
-            ex + 6, ey + 10,
-            ex + 6, ey + board.CELL_SIZE - 10)
+            arrowX + 10, centerY,
+            arrowX, centerY - 12,
+            arrowX, centerY + 12)
     end
 
     -- Draw cars

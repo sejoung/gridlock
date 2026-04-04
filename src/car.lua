@@ -1,5 +1,6 @@
 local car = {}
 local carTypes = require("src.car_types")
+local anim = require("src.anim")
 
 -- Cache loaded images
 local imageCache = {}
@@ -52,6 +53,11 @@ function car.draw(c, board)
     local pad = 4
     local cellW, cellH
 
+    -- Apply animation offset
+    local ox, oy = anim.getOffset(c.id)
+    sx = sx + ox
+    sy = sy + oy
+
     if c.dir == "H" then
         cellW = c.len * board.CELL_SIZE
         cellH = board.CELL_SIZE
@@ -60,55 +66,46 @@ function car.draw(c, board)
         cellH = c.len * board.CELL_SIZE
     end
 
+    -- Selection glow (drawn behind the car)
+    if c.selected then
+        love.graphics.setColor(1, 1, 0.5, 0.3)
+        love.graphics.rectangle("fill", sx, sy, cellW, cellH, 8, 8)
+        love.graphics.setColor(1, 1, 0.4, 0.7)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", sx + 1, sy + 1, cellW - 2, cellH - 2, 8, 8)
+        love.graphics.setLineWidth(1)
+    end
+
     if c.image then
         local imgW = c.image:getWidth()
         local imgH = c.image:getHeight()
 
-        -- Sprite is vertical (pointing up). For H cars, rotate 90° CW.
+        if c.selected then
+            love.graphics.setColor(0.8, 0.95, 1.0)
+        else
+            love.graphics.setColor(1, 1, 1)
+        end
+
+        local centerX = sx + cellW / 2
+        local centerY = sy + cellH / 2
+
         if c.dir == "H" then
-            -- After 90° CW rotation: sprite width becomes height and vice versa
             local scaleX = (cellH - pad * 2) / imgW
             local scaleY = (cellW - pad * 2) / imgH
             local scale = math.min(scaleX, scaleY)
 
-            local drawW = imgW * scale
-            local drawH = imgH * scale
-
-            -- Rotate 90° CW around center of the cell area
-            local cx = sx + cellW / 2
-            local cy = sy + cellH / 2
-
-            if c.selected then
-                love.graphics.setColor(0.7, 0.9, 1.0)
-            else
-                love.graphics.setColor(1, 1, 1)
-            end
-
             love.graphics.draw(c.image,
-                cx, cy,
+                centerX, centerY,
                 math.pi / 2,
                 scale, scale,
                 imgW / 2, imgH / 2)
         else
-            -- Vertical: use sprite as-is
             local scaleX = (cellW - pad * 2) / imgW
             local scaleY = (cellH - pad * 2) / imgH
             local scale = math.min(scaleX, scaleY)
 
-            local drawW = imgW * scale
-            local drawH = imgH * scale
-
-            local cx = sx + cellW / 2
-            local cy = sy + cellH / 2
-
-            if c.selected then
-                love.graphics.setColor(0.7, 0.9, 1.0)
-            else
-                love.graphics.setColor(1, 1, 1)
-            end
-
             love.graphics.draw(c.image,
-                cx, cy,
+                centerX, centerY,
                 0,
                 scale, scale,
                 imgW / 2, imgH / 2)

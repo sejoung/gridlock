@@ -1,56 +1,119 @@
 local ui = {}
 
-local BUTTON_W = 180
-local BUTTON_H = 44
+local BUTTON_W = 200
+local BUTTON_H = 48
 
-local function drawButton(text, x, y, w, h)
-    w = w or BUTTON_W
-    h = h or BUTTON_H
+-- Fonts
+local titleFont = nil
+local subtitleFont = nil
+local bodyFont = nil
+local smallFont = nil
 
-    love.graphics.setColor(0.3, 0.3, 0.35)
-    love.graphics.rectangle("fill", x, y, w, h, 6, 6)
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.rectangle("line", x, y, w, h, 6, 6)
+-- Hover tracking
+local mouseX, mouseY = 0, 0
+-- Button hover animation
+local hoverAlpha = 0
 
-    local font = love.graphics.getFont()
-    local tw = font:getWidth(text)
-    local th = font:getHeight()
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print(text, x + (w - tw) / 2, y + (h - th) / 2)
+function ui.loadFonts()
+    titleFont = love.graphics.newFont(36)
+    subtitleFont = love.graphics.newFont(18)
+    bodyFont = love.graphics.newFont(16)
+    smallFont = love.graphics.newFont(13)
+end
+
+function ui.update(dt)
+    -- Could add hover animations here
+end
+
+function ui.mousemoved(x, y)
+    mouseX, mouseY = x, y
 end
 
 local function isInside(mx, my, x, y, w, h)
     return mx >= x and mx <= x + w and my >= y and my <= y + h
 end
 
+local function isHovered(x, y, w, h)
+    return isInside(mouseX, mouseY, x, y, w, h)
+end
+
+local function drawButton(text, x, y, w, h, font)
+    w = w or BUTTON_W
+    h = h or BUTTON_H
+    font = font or bodyFont
+
+    local hovered = isHovered(x, y, w, h)
+
+    if hovered then
+        love.graphics.setColor(0.4, 0.4, 0.48)
+    else
+        love.graphics.setColor(0.28, 0.28, 0.33)
+    end
+    love.graphics.rectangle("fill", x, y, w, h, 8, 8)
+
+    if hovered then
+        love.graphics.setColor(1, 1, 0.6, 0.8)
+        love.graphics.setLineWidth(2)
+    else
+        love.graphics.setColor(0.6, 0.6, 0.65)
+        love.graphics.setLineWidth(1)
+    end
+    love.graphics.rectangle("line", x, y, w, h, 8, 8)
+    love.graphics.setLineWidth(1)
+
+    love.graphics.setFont(font)
+    local tw = font:getWidth(text)
+    local th = font:getHeight()
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(text, x + (w - tw) / 2, y + (h - th) / 2)
+end
+
 -- Title Screen
 
 function ui.drawTitle()
-    love.graphics.setColor(1, 1, 1)
-    local font = love.graphics.getFont()
-    local title = "GRIDLOCK"
-    local tw = font:getWidth(title)
-    love.graphics.print(title, (800 - tw) / 2, 150)
+    -- Background gradient feel
+    love.graphics.setColor(0.1, 0.1, 0.14)
+    love.graphics.rectangle("fill", 0, 0, 800, 600)
 
+    -- Title
+    love.graphics.setFont(titleFont)
+    love.graphics.setColor(1, 1, 1)
+    local title = "GRIDLOCK"
+    local tw = titleFont:getWidth(title)
+    love.graphics.print(title, (800 - tw) / 2, 120)
+
+    -- Subtitle
+    love.graphics.setFont(subtitleFont)
+    love.graphics.setColor(0.6, 0.6, 0.65)
     local subtitle = "A Parking Puzzle"
-    local sw = font:getWidth(subtitle)
-    love.graphics.setColor(0.6, 0.6, 0.6)
-    love.graphics.print(subtitle, (800 - sw) / 2, 180)
+    local sw = subtitleFont:getWidth(subtitle)
+    love.graphics.print(subtitle, (800 - sw) / 2, 170)
+
+    -- Divider line
+    love.graphics.setColor(0.3, 0.3, 0.35)
+    love.graphics.line(300, 210, 500, 210)
 
     local bx = (800 - BUTTON_W) / 2
-    drawButton("Start", bx, 280)
-    drawButton("Level Select", bx, 340)
-    drawButton("Exit", bx, 400)
+    drawButton("Start", bx, 250)
+    drawButton("Level Select", bx, 315)
+    drawButton("Exit", bx, 380)
+
+    -- Footer
+    love.graphics.setFont(smallFont)
+    love.graphics.setColor(0.35, 0.35, 0.4)
+    local footer = "Arrow keys or mouse drag to move"
+    local fw = smallFont:getWidth(footer)
+    love.graphics.print(footer, (800 - fw) / 2, 560)
 end
 
 function ui.titleClick(x, y, game)
     local bx = (800 - BUTTON_W) / 2
 
-    if isInside(x, y, bx, 280, BUTTON_W, BUTTON_H) then
+    if isInside(x, y, bx, 250, BUTTON_W, BUTTON_H) then
         game.startLevel(1)
-    elseif isInside(x, y, bx, 340, BUTTON_W, BUTTON_H) then
+    elseif isInside(x, y, bx, 315, BUTTON_W, BUTTON_H) then
         game.state = "level_select"
-    elseif isInside(x, y, bx, 400, BUTTON_W, BUTTON_H) then
+    elseif isInside(x, y, bx, 380, BUTTON_W, BUTTON_H) then
         love.event.quit()
     end
 end
@@ -58,14 +121,25 @@ end
 -- Level Select
 
 function ui.drawLevelSelect(levelCount, saveData)
+    love.graphics.setColor(0.1, 0.1, 0.14)
+    love.graphics.rectangle("fill", 0, 0, 800, 600)
+
+    love.graphics.setFont(subtitleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Level Select", 320, 40)
+    local header = "Level Select"
+    local hw = subtitleFont:getWidth(header)
+    love.graphics.print(header, (800 - hw) / 2, 30)
+
+    love.graphics.setColor(0.3, 0.3, 0.35)
+    love.graphics.line(300, 60, 500, 60)
 
     local cols = 5
-    local btnSize = 64
+    local btnSize = 72
     local gap = 16
     local startX = (800 - (cols * (btnSize + gap) - gap)) / 2
-    local startY = 100
+    local startY = 90
+
+    love.graphics.setFont(bodyFont)
 
     for i = 1, levelCount do
         local col = (i - 1) % cols
@@ -73,33 +147,53 @@ function ui.drawLevelSelect(levelCount, saveData)
         local bx = startX + col * (btnSize + gap)
         local by = startY + row * (btnSize + gap)
 
-        if saveData.cleared[i] then
-            love.graphics.setColor(0.2, 0.5, 0.3)
-        else
-            love.graphics.setColor(0.3, 0.3, 0.35)
-        end
-        love.graphics.rectangle("fill", bx, by, btnSize, btnSize, 6, 6)
-        love.graphics.setColor(0.8, 0.8, 0.8)
-        love.graphics.rectangle("line", bx, by, btnSize, btnSize, 6, 6)
+        local hovered = isHovered(bx, by, btnSize, btnSize)
 
+        if saveData.cleared[i] then
+            love.graphics.setColor(0.15, 0.45, 0.25)
+        elseif hovered then
+            love.graphics.setColor(0.4, 0.4, 0.48)
+        else
+            love.graphics.setColor(0.28, 0.28, 0.33)
+        end
+        love.graphics.rectangle("fill", bx, by, btnSize, btnSize, 8, 8)
+
+        if hovered then
+            love.graphics.setColor(1, 1, 0.6, 0.8)
+            love.graphics.setLineWidth(2)
+        else
+            love.graphics.setColor(0.5, 0.5, 0.55)
+            love.graphics.setLineWidth(1)
+        end
+        love.graphics.rectangle("line", bx, by, btnSize, btnSize, 8, 8)
+        love.graphics.setLineWidth(1)
+
+        -- Level number
         love.graphics.setColor(1, 1, 1)
         local text = tostring(i)
-        local font = love.graphics.getFont()
-        local tw = font:getWidth(text)
-        local th = font:getHeight()
+        local tw = bodyFont:getWidth(text)
+        local th = bodyFont:getHeight()
         love.graphics.print(text, bx + (btnSize - tw) / 2, by + (btnSize - th) / 2)
+
+        -- Checkmark for cleared
+        if saveData.cleared[i] then
+            love.graphics.setFont(smallFont)
+            love.graphics.setColor(0.5, 1, 0.5)
+            love.graphics.print("Clear", bx + (btnSize - smallFont:getWidth("Clear")) / 2, by + btnSize - 18)
+            love.graphics.setFont(bodyFont)
+        end
     end
 
-    drawButton("Back", (800 - BUTTON_W) / 2, 500)
+    drawButton("Back", (800 - BUTTON_W) / 2, 520)
 end
 
 function ui.levelSelectClick(x, y, game)
     local level = require("src.level")
     local cols = 5
-    local btnSize = 64
+    local btnSize = 72
     local gap = 16
     local startX = (800 - (cols * (btnSize + gap) - gap)) / 2
-    local startY = 100
+    local startY = 90
 
     for i = 1, level.count() do
         local col = (i - 1) % cols
@@ -113,33 +207,47 @@ function ui.levelSelectClick(x, y, game)
         end
     end
 
-    if isInside(x, y, (800 - BUTTON_W) / 2, 500, BUTTON_W, BUTTON_H) then
+    if isInside(x, y, (800 - BUTTON_W) / 2, 520, BUTTON_W, BUTTON_H) then
         game.state = "title"
     end
 end
 
 -- HUD
 
-function ui.drawHUD(levelNum, moveCount)
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Level: " .. levelNum, 20, 10)
-    love.graphics.print("Moves: " .. moveCount, 700, 10)
+local HUD_BTN_W = 90
+local HUD_BTN_H = 34
 
-    local smallBtn = 80
-    drawButton("Undo(U)", 20, 560, smallBtn, 30)
-    drawButton("Reset(R)", 110, 560, smallBtn, 30)
-    drawButton("Menu", 690, 560, smallBtn, 30)
+function ui.drawHUD(levelNum, moveCount)
+    -- Top bar background
+    love.graphics.setColor(0.12, 0.12, 0.15, 0.9)
+    love.graphics.rectangle("fill", 0, 0, 800, 40)
+
+    love.graphics.setFont(bodyFont)
+    love.graphics.setColor(0.9, 0.9, 0.9)
+    love.graphics.print("Level " .. levelNum, 20, 10)
+
+    love.graphics.setColor(0.8, 0.8, 0.5)
+    local movesText = "Moves: " .. moveCount
+    local mw = bodyFont:getWidth(movesText)
+    love.graphics.print(movesText, 800 - mw - 20, 10)
+
+    -- Bottom bar background
+    love.graphics.setColor(0.12, 0.12, 0.15, 0.9)
+    love.graphics.rectangle("fill", 0, 556, 800, 44)
+
+    drawButton("Undo (U)", 16, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
+    drawButton("Reset (R)", 116, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
+    drawButton("Menu", 800 - HUD_BTN_W - 16, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
 end
 
 function ui.hudClick(x, y, game)
-    local smallBtn = 80
-    if isInside(x, y, 20, 560, smallBtn, 30) then
+    if isInside(x, y, 16, 560, HUD_BTN_W, HUD_BTN_H) then
         game.undo()
         return true
-    elseif isInside(x, y, 110, 560, smallBtn, 30) then
+    elseif isInside(x, y, 116, 560, HUD_BTN_W, HUD_BTN_H) then
         game.reset()
         return true
-    elseif isInside(x, y, 690, 560, smallBtn, 30) then
+    elseif isInside(x, y, 800 - HUD_BTN_W - 16, 560, HUD_BTN_W, HUD_BTN_H) then
         game.state = "title"
         return true
     end
@@ -149,34 +257,58 @@ end
 -- Clear Screen
 
 function ui.drawClear(levelNum, moveCount)
-    love.graphics.setColor(0, 0, 0, 0.6)
+    -- Dark overlay
+    love.graphics.setColor(0, 0, 0, 0.65)
     love.graphics.rectangle("fill", 0, 0, 800, 600)
 
-    love.graphics.setColor(1, 1, 0.4)
-    local text = "Level " .. levelNum .. " Clear!"
-    local font = love.graphics.getFont()
-    local tw = font:getWidth(text)
-    love.graphics.print(text, (800 - tw) / 2, 180)
+    -- Panel
+    local panelW, panelH = 340, 320
+    local px = (800 - panelW) / 2
+    local py = (600 - panelH) / 2 - 20
 
-    love.graphics.setColor(1, 1, 1)
+    love.graphics.setColor(0.18, 0.18, 0.22)
+    love.graphics.rectangle("fill", px, py, panelW, panelH, 12, 12)
+    love.graphics.setColor(0.5, 0.5, 0.55)
+    love.graphics.rectangle("line", px, py, panelW, panelH, 12, 12)
+
+    -- Title
+    love.graphics.setFont(titleFont)
+    love.graphics.setColor(1, 0.9, 0.3)
+    local text = "Clear!"
+    local tw = titleFont:getWidth(text)
+    love.graphics.print(text, (800 - tw) / 2, py + 20)
+
+    -- Level info
+    love.graphics.setFont(subtitleFont)
+    love.graphics.setColor(0.8, 0.8, 0.8)
+    local info = "Level " .. levelNum
+    local iw = subtitleFont:getWidth(info)
+    love.graphics.print(info, (800 - iw) / 2, py + 70)
+
+    -- Move count
+    love.graphics.setFont(bodyFont)
+    love.graphics.setColor(0.7, 0.8, 0.5)
     local moves = "Moves: " .. moveCount
-    local mw = font:getWidth(moves)
-    love.graphics.print(moves, (800 - mw) / 2, 220)
+    local mw = bodyFont:getWidth(moves)
+    love.graphics.print(moves, (800 - mw) / 2, py + 100)
 
+    -- Buttons
     local bx = (800 - BUTTON_W) / 2
-    drawButton("Next Level", bx, 300)
-    drawButton("Retry", bx, 360)
-    drawButton("Level Select", bx, 420)
+    drawButton("Next Level", bx, py + 145)
+    drawButton("Retry", bx, py + 205)
+    drawButton("Level Select", bx, py + 265)
 end
 
 function ui.clearClick(x, y, game)
+    local panelH = 320
+    local py = (600 - panelH) / 2 - 20
     local bx = (800 - BUTTON_W) / 2
 
-    if isInside(x, y, bx, 300, BUTTON_W, BUTTON_H) then
+    if isInside(x, y, bx, py + 145, BUTTON_W, BUTTON_H) then
         game.nextLevel()
-    elseif isInside(x, y, bx, 360, BUTTON_W, BUTTON_H) then
+    elseif isInside(x, y, bx, py + 205, BUTTON_W, BUTTON_H) then
         game.reset()
-    elseif isInside(x, y, bx, 420, BUTTON_W, BUTTON_H) then
+    elseif isInside(x, y, bx, py + 265, BUTTON_W, BUTTON_H) then
         game.state = "level_select"
     end
 end
