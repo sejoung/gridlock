@@ -1,4 +1,4 @@
-name: Build & Release
+name: Build
 
 on:
   push:
@@ -116,9 +116,8 @@ jobs:
 
           # Use pre-built .ico icon
           if (Test-Path "assets\icon.ico") {
-            npm install rcedit
-            $rcedit = Join-Path (Get-Location) "node_modules\.bin\rcedit.cmd"
-            & $rcedit "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
+            Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile rcedit.exe
+            .\rcedit.exe "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
           }
 
           Rename-Item $loveDir "gridlock-windows"
