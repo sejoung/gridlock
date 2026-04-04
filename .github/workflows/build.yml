@@ -181,7 +181,7 @@ jobs:
 
       - name: Build with love.js
         run: |
-          npx love.js@0.9.0 gridlock.love build/web -t "Gridlock" -c
+          npx love.js@11.4.1 gridlock.love build/web -t "Gridlock" -c
 
           # Copy icon as favicon
           if [ -f assets/icon.png ]; then
