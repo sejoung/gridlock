@@ -1,0 +1,145 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-love:
+    name: Build .love file
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Create .love file
+        run: |
+          zip -r gridlock.love . \
+            -x ".git/*" ".github/*" ".idea/*" "tools/*" "docs/*" \
+            ".editorconfig" ".gitignore" "LICENSE" "README.md" \
+            "assets/icon.svg" "assets/icon.ico" "assets/icon.icns"
+
+      - name: Upload .love artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-love-file
+          path: gridlock.love
+
+  build-macos:
+    name: Build macOS
+    needs: build-love
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: assets/icon.icns
+          sparse-checkout-cone-mode: false
+
+      - name: Download .love file
+        uses: actions/download-artifact@v4
+        with:
+          name: release-love-file
+
+      - name: Install Love2D
+        run: brew install --cask love
+
+      - name: Create macOS app bundle
+        run: |
+          LOVE_APP="/Applications/love.app"
+          cp -r "$LOVE_APP" Gridlock.app
+          cp gridlock.love Gridlock.app/Contents/Resources/
+
+          if [ -f assets/icon.icns ]; then
+            cp assets/icon.icns Gridlock.app/Contents/Resources/GameIcon.icns
+            plutil -replace CFBundleIconFile -string "GameIcon" Gridlock.app/Contents/Info.plist
+          fi
+
+          plutil -replace CFBundleName -string "Gridlock" Gridlock.app/Contents/Info.plist
+          plutil -replace CFBundleIdentifier -string "com.gridlock.game" Gridlock.app/Contents/Info.plist
+          zip -r gridlock-macos.zip Gridlock.app
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-build
+          path: gridlock-macos.zip
+
+  build-windows:
+    name: Build Windows
+    needs: build-love
+    runs-on: windows-latest
+    env:
+      LOVE_VERSION: "11.5"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: assets/icon.ico
+          sparse-checkout-cone-mode: false
+
+      - name: Download .love file
+        uses: actions/download-artifact@v4
+        with:
+          name: release-love-file
+
+      - name: Download Love2D Windows binaries
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/love2d/love/releases/download/$env:LOVE_VERSION/love-$env:LOVE_VERSION-win64.zip" -OutFile love-win.zip
+          Expand-Archive love-win.zip -DestinationPath .
+        shell: pwsh
+
+      - name: Create Windows executable
+        run: |
+          $loveDir = "love-$env:LOVE_VERSION-win64"
+
+          $loveExe = [System.IO.File]::ReadAllBytes("$loveDir\love.exe")
+          $loveFile = [System.IO.File]::ReadAllBytes("gridlock.love")
+          $merged = $loveExe + $loveFile
+          [System.IO.File]::WriteAllBytes("$loveDir\gridlock.exe", $merged)
+
+          Remove-Item "$loveDir\love.exe"
+          Remove-Item "$loveDir\lovec.exe" -ErrorAction SilentlyContinue
+          Remove-Item "$loveDir\changes.txt" -ErrorAction SilentlyContinue
+          Remove-Item "$loveDir\readme.txt" -ErrorAction SilentlyContinue
+
+          if (Test-Path "assets\icon.ico") {
+            npm install rcedit
+            $rcedit = Join-Path (Get-Location) "node_modules\.bin\rcedit.cmd"
+            & $rcedit "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
+          }
+
+          Rename-Item $loveDir "gridlock-windows"
+          Compress-Archive -Path "gridlock-windows" -DestinationPath "gridlock-windows.zip"
+        shell: pwsh
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-build
+          path: gridlock-windows.zip
+
+  release:
+    name: Create GitHub Release
+    needs: [build-love, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Gridlock v${{ needs.build-love.outputs.version }}
+          generate_release_notes: true
+          files: |
+            release-love-file/gridlock.love
+            release-macos-build/gridlock-macos.zip
+            release-windows-build/gridlock-windows.zip
