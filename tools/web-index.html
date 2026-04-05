@@ -41,15 +41,6 @@
       border: 2px solid #2a2a3a;
       border-radius: 8px;
       display: block;
-      visibility: hidden;
-    }
-    #loadingCanvas {
-      border: 2px solid #2a2a3a;
-      border-radius: 8px;
-      display: block;
-      position: absolute;
-      top: 0;
-      left: 0;
     }
 
     .controls {
@@ -124,7 +115,6 @@
   </div>
 
   <div class="game-wrapper">
-    <canvas id="loadingCanvas" width="800" height="600"></canvas>
     <canvas id="canvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
   </div>
 
@@ -160,29 +150,6 @@
   </div>
 
   <script type="text/javascript">
-    // Loading canvas - draw progress
-    var loadingCtx = document.getElementById('loadingCanvas').getContext('2d');
-    function drawLoadingScreen(text) {
-      var c = loadingCtx;
-      c.fillStyle = '#0f0f1a';
-      c.fillRect(0, 0, 800, 600);
-      c.fillStyle = '#888';
-      c.font = '16px -apple-system, sans-serif';
-      c.textAlign = 'center';
-      c.fillText(text || 'Loading...', 400, 290);
-      // Progress bar
-      var m = text && text.match(/\((\d+)\/(\d+)\)/);
-      if (m) {
-        var pct = parseInt(m[1]) / parseInt(m[2]);
-        c.fillStyle = '#222';
-        c.fillRect(250, 310, 300, 6);
-        c.fillStyle = '#5555cc';
-        c.fillRect(250, 310, 300 * pct, 6);
-      }
-    }
-    drawLoadingScreen('Loading...');
-
-    // Module configuration - must be before love.js loads
     var Module = {
       arguments: ['./game.love'],
       INITIAL_MEMORY: 16777216,
@@ -197,29 +164,14 @@
         return canvas;
       })(),
       setStatus: function(text) {
-        if (text) {
-          drawLoadingScreen(text);
-        }
-        if (!text || text === 'Running...') {
-          document.getElementById('loadingCanvas').style.display = 'none';
-          document.getElementById('canvas').style.visibility = 'visible';
-        }
+        if (text) console.log('[status]', text);
       },
       totalDependencies: 0,
-      remainingDependencies: 0,
       monitorRunDependencies: function(left) {
-        this.remainingDependencies = left;
         this.totalDependencies = Math.max(this.totalDependencies, left);
-        if (left) {
-          Module.setStatus('Loading... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')');
-        } else {
-          Module.setStatus('');
-        }
       }
     };
-    Module.setStatus('Downloading...');
 
-    // Boot love.js when it finishes loading
     var applicationLoad = function(e) {
       Love(Module);
     }
