@@ -17,64 +17,42 @@
       align-items: center;
     }
 
-    /* Header */
     .header {
       text-align: center;
-      padding: 32px 16px 16px;
+      padding: 24px 16px 12px;
     }
+    .header img { margin-bottom: 6px; }
     .header h1 {
-      font-size: 36px;
+      font-size: 32px;
       color: #fff;
       letter-spacing: 4px;
     }
     .header p {
       color: #888;
       font-size: 14px;
-      margin-top: 4px;
+      margin-top: 2px;
     }
 
-    /* Game area */
-    .game-wrapper {
-      position: relative;
-      margin: 16px 0;
-    }
-    canvas {
+    .game-frame {
       border: 2px solid #2a2a3a;
       border-radius: 8px;
-      display: block;
-    }
-
-    /* Loading */
-    .loading-container {
-      text-align: center;
-      margin-top: 12px;
-    }
-    .loading-text {
-      color: #888;
-      font-size: 13px;
-    }
-    .loading-bar {
-      width: 300px;
-      height: 4px;
-      background: #222;
-      border-radius: 2px;
-      margin: 8px auto 0;
       overflow: hidden;
+      width: 800px;
+      height: 600px;
+      max-width: calc(100vw - 32px);
+      max-height: 60vh;
     }
-    .loading-fill {
+    .game-frame iframe {
+      width: 100%;
       height: 100%;
-      background: #5555cc;
-      width: 0%;
-      transition: width 0.3s;
+      border: none;
     }
-    .loading-container.hidden { display: none; }
 
-    /* Controls info */
     .controls {
       display: flex;
       gap: 24px;
       justify-content: center;
-      margin-top: 16px;
+      margin-top: 14px;
       flex-wrap: wrap;
     }
     .control-item {
@@ -94,11 +72,10 @@
       color: #aaa;
     }
 
-    /* Links */
     .links {
       display: flex;
-      gap: 16px;
-      margin-top: 24px;
+      gap: 14px;
+      margin-top: 20px;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -120,41 +97,31 @@
       color: #aaaaee;
     }
 
-    /* Footer */
     .footer {
       margin-top: auto;
-      padding: 24px 16px;
+      padding: 20px 16px;
       text-align: center;
       color: #444;
       font-size: 12px;
       width: 100%;
       border-top: 1px solid #1a1a2a;
     }
-    .footer a {
-      color: #666;
-      text-decoration: none;
-    }
+    .footer a { color: #666; text-decoration: none; }
     .footer a:hover { color: #999; }
 
-    /* SVG icons inline */
     .icon-svg { width: 16px; height: 16px; fill: currentColor; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <img src="icon.svg" alt="Gridlock" width="80" height="80" style="margin-bottom: 8px;">
+    <img src="icon.svg" alt="Gridlock" width="72" height="72">
     <h1>GRIDLOCK</h1>
     <p>A Parking Puzzle Game</p>
   </div>
 
-  <div class="game-wrapper">
-    <canvas id="canvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
-  </div>
-
-  <div class="loading-container" id="loadingContainer">
-    <div class="loading-text" id="loadingText">Loading...</div>
-    <div class="loading-bar"><div class="loading-fill" id="loadingFill"></div></div>
+  <div class="game-frame">
+    <iframe src="game.html" allowfullscreen></iframe>
   </div>
 
   <div class="controls">
@@ -187,27 +154,6 @@
       <a href="https://github.com/sejoung/gridlock">Open Source (Apache 2.0)</a>
     </p>
   </div>
-
-  <script type="text/javascript">
-    var Module = {
-      canvas: document.getElementById('canvas'),
-      setStatus: function(text) {
-        var container = document.getElementById('loadingContainer');
-        var el = document.getElementById('loadingText');
-        var bar = document.getElementById('loadingFill');
-        if (!text) {
-          container.classList.add('hidden');
-          return;
-        }
-        container.classList.remove('hidden');
-        el.textContent = text;
-        var m = text.match(/(\d+(\.\d+)?)\//);
-        if (m) bar.style.width = (100 - parseInt(m[1])) + '%';
-      }
-    };
-  </script>
-  <script type="text/javascript" src="game.js"></script>
-  <script type="text/javascript" src="love.js"></script>
 
 </body>
 </html>

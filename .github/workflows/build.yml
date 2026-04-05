@@ -161,7 +161,8 @@ jobs:
         run: |
           npx love.js@11.4.1 gridlock.love build/web -t "Gridlock" -c
 
-          # Replace default index.html with custom page
+          # Keep love.js page as game.html, use custom landing page
+          mv build/web/index.html build/web/game.html
           cp tools/web-index.html build/web/index.html
 
           # Copy icons
