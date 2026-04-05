@@ -34,39 +34,23 @@
     }
 
     .game-wrapper {
+      position: relative;
       margin: 12px 0;
     }
-    canvas {
+    #canvas {
       border: 2px solid #2a2a3a;
       border-radius: 8px;
       display: block;
+      visibility: hidden;
     }
-
-    .loading-container {
-      text-align: center;
-      margin-top: 8px;
-      min-height: 28px;
+    #loadingCanvas {
+      border: 2px solid #2a2a3a;
+      border-radius: 8px;
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
-    .loading-text {
-      color: #888;
-      font-size: 13px;
-    }
-    .loading-bar {
-      width: 300px;
-      height: 4px;
-      background: #222;
-      border-radius: 2px;
-      margin: 6px auto 0;
-      overflow: hidden;
-    }
-    .loading-fill {
-      height: 100%;
-      background: #5555cc;
-      width: 0%;
-      transition: width 0.3s;
-    }
-    .loading-container.hidden .loading-text,
-    .loading-container.hidden .loading-bar { display: none; }
 
     .controls {
       display: flex;
@@ -140,12 +124,8 @@
   </div>
 
   <div class="game-wrapper">
+    <canvas id="loadingCanvas" width="800" height="600"></canvas>
     <canvas id="canvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
-  </div>
-
-  <div class="loading-container" id="loadingContainer">
-    <div class="loading-text" id="loadingText">Loading...</div>
-    <div class="loading-bar"><div class="loading-fill" id="loadingFill"></div></div>
   </div>
 
   <div class="controls">
@@ -179,40 +159,75 @@
     </p>
   </div>
 
-  <!-- love.js Module must be defined BEFORE scripts load -->
   <script type="text/javascript">
+    // Loading canvas - draw progress
+    var loadingCtx = document.getElementById('loadingCanvas').getContext('2d');
+    function drawLoadingScreen(text) {
+      var c = loadingCtx;
+      c.fillStyle = '#0f0f1a';
+      c.fillRect(0, 0, 800, 600);
+      c.fillStyle = '#888';
+      c.font = '16px -apple-system, sans-serif';
+      c.textAlign = 'center';
+      c.fillText(text || 'Loading...', 400, 290);
+      // Progress bar
+      var m = text && text.match(/\((\d+)\/(\d+)\)/);
+      if (m) {
+        var pct = parseInt(m[1]) / parseInt(m[2]);
+        c.fillStyle = '#222';
+        c.fillRect(250, 310, 300, 6);
+        c.fillStyle = '#5555cc';
+        c.fillRect(250, 310, 300 * pct, 6);
+      }
+    }
+    drawLoadingScreen('Loading...');
+
+    // Module configuration - must be before love.js loads
     var Module = {
-      canvas: document.getElementById('canvas'),
-      arguments: ['./'],
-      printErr: function(text) { if (text) console.error(text); },
-      print: function(text) { if (text) console.log(text); },
+      arguments: ['./game.love'],
+      INITIAL_MEMORY: 16777216,
+      printErr: function(text) { if (text) console.error('[love]', text); },
+      print: function(text) { if (text) console.log('[love]', text); },
+      canvas: (function() {
+        var canvas = document.getElementById('canvas');
+        canvas.addEventListener('webglcontextlost', function(e) {
+          alert('WebGL context lost. Please reload the page.');
+          e.preventDefault();
+        }, false);
+        return canvas;
+      })(),
       setStatus: function(text) {
-        var container = document.getElementById('loadingContainer');
-        var el = document.getElementById('loadingText');
-        var bar = document.getElementById('loadingFill');
-        if (!text || text === 'Running...') {
-          container.classList.add('hidden');
-          return;
+        if (text) {
+          drawLoadingScreen(text);
         }
-        container.classList.remove('hidden');
-        el.textContent = text;
-        var m = text.match(/Downloading data\.\.\. \((\d+)\/(\d+)\)/);
-        if (m) {
-          var pct = Math.round((parseInt(m[1]) / parseInt(m[2])) * 100);
-          bar.style.width = pct + '%';
+        if (!text || text === 'Running...') {
+          document.getElementById('loadingCanvas').style.display = 'none';
+          document.getElementById('canvas').style.visibility = 'visible';
         }
       },
       totalDependencies: 0,
+      remainingDependencies: 0,
       monitorRunDependencies: function(left) {
-        Module.totalDependencies = Math.max(Module.totalDependencies, left);
-        if (left === 0) {
-          document.getElementById('loadingContainer').classList.add('hidden');
+        this.remainingDependencies = left;
+        this.totalDependencies = Math.max(this.totalDependencies, left);
+        if (left) {
+          Module.setStatus('Loading... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')');
+        } else {
+          Module.setStatus('');
         }
       }
     };
+    Module.setStatus('Downloading...');
+
+    // Boot love.js when it finishes loading
+    var applicationLoad = function(e) {
+      Love(Module);
+    }
   </script>
+  <!-- game.js must load synchronously BEFORE love.js -->
   <script type="text/javascript" src="game.js"></script>
-  <script type="text/javascript" src="love.js"></script>
+  <!-- love.js loads async, calls Love(Module) on completion -->
+  <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>
 
 </body>
 </html>
