@@ -67,8 +67,8 @@ jobs:
 
           # Use pre-built .icns icon
           if [ -f assets/icon.icns ]; then
+            cp assets/icon.icns "Gridlock.app/Contents/Resources/OS X AppIcon.icns"
             cp assets/icon.icns Gridlock.app/Contents/Resources/GameIcon.icns
-            plutil -replace CFBundleIconFile -string "GameIcon" Gridlock.app/Contents/Info.plist
           fi
 
           plutil -replace CFBundleName -string "Gridlock" Gridlock.app/Contents/Info.plist
