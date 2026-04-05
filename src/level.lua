@@ -84,6 +84,11 @@ local function parseLevels(data)
 
     -- Sort by id
     table.sort(parsed, function(a, b) return a.id < b.id end)
+
+    local ids = {}
+    for _, lv in ipairs(parsed) do table.insert(ids, tostring(lv.id)) end
+    print("[level] Parsed downloaded IDs: " .. table.concat(ids, ", "))
+
     return parsed
 end
 
@@ -103,13 +108,18 @@ local function mergeLevels(bundled, downloaded)
         idSet[lv.id] = true
         table.insert(merged, lv)
     end
+    print("[level] Bundled IDs: 1-" .. #bundled .. " (" .. #bundled .. " levels)")
 
+    local added = 0
     for _, lv in ipairs(downloaded) do
         if not idSet[lv.id] then
             idSet[lv.id] = true
             table.insert(merged, lv)
+            added = added + 1
+            print("[level] + Added downloaded level id=" .. tostring(lv.id))
         end
     end
+    print("[level] Merge: " .. #bundled .. " bundled + " .. added .. " new from " .. #downloaded .. " downloaded = " .. #merged .. " total")
 
     -- Sort by id
     table.sort(merged, function(a, b) return a.id < b.id end)
@@ -122,12 +132,17 @@ end
 
 function level.loadAll()
     local bundled = loadBundled()
+    print("[level] Loaded " .. #bundled .. " bundled levels")
 
     -- Try to load cached downloaded levels
-    local cachedData = loadCached()
+    local cachedData, cachedVersion = loadCached()
     local downloaded = parseLevels(cachedData)
+    if #downloaded > 0 then
+        print("[level] Loaded " .. #downloaded .. " cached levels (version: " .. tostring(cachedVersion) .. ")")
+    end
 
     levels = mergeLevels(bundled, downloaded)
+    print("[level] Total: " .. #levels .. " levels")
 end
 
 function level.get(num)
@@ -139,28 +154,31 @@ function level.count()
 end
 
 -- HTTP fetch helper (used in threads)
+-- curl: macOS/Linux/Windows 10+ all have it built-in
+-- PowerShell fallback for older Windows
 local FETCH_CODE = [[
-    local function fetch(url, maxRedirects)
-        local http = require("socket.http")
-        local ltn12 = require("ltn12")
-        maxRedirects = maxRedirects or 5
-        for i = 1, maxRedirects do
-            local body = {}
-            local result, status, headers = http.request{
-                url = url,
-                sink = ltn12.sink.table(body),
-                redirect = false,
-                headers = { ["User-Agent"] = "Gridlock/1.0" },
-            }
-            if status == 200 then
-                return table.concat(body)
-            elseif status == 301 or status == 302 or status == 307 or status == 308 then
-                local location = headers and headers["location"]
-                if location then url = location else return nil end
-            else
-                return nil
+    local function fetch(url)
+        -- Try curl first (available on macOS, Linux, Windows 10+)
+        local handle = io.popen('curl -sL --max-time 10 "' .. url .. '" 2>/dev/null')
+        if handle then
+            local body = handle:read("*a")
+            handle:close()
+            if body and #body > 0 then
+                return body
             end
         end
+
+        -- Fallback: PowerShell (Windows)
+        local cmd = 'powershell -Command "(Invoke-WebRequest -Uri \'' .. url .. '\' -UseBasicParsing).Content" 2>nul'
+        handle = io.popen(cmd)
+        if handle then
+            local body = handle:read("*a")
+            handle:close()
+            if body and #body > 0 then
+                return body
+            end
+        end
+
         return nil
     end
 ]]
@@ -183,27 +201,23 @@ function level.checkForUpdates()
         if localVersion then localVersion = localVersion:match("^%s*(.-)%s*$") end
     end
 
+    print("[level] Checking for updates... (local version: " .. tostring(localVersion) .. ")")
+
     -- Step 1: Fetch remote version (tiny file)
     local thread = love.thread.newThread(FETCH_CODE .. [[
         local versionUrl, levelsUrl, localVersion = ...
         local channel = love.thread.getChannel("level_update")
 
-        local ok = pcall(require, "socket.http")
-        if not ok then
-            channel:push({ status = "skip" })
-            return
-        end
-
         local remoteVersion = fetch(versionUrl)
         if not remoteVersion then
-            channel:push({ status = "skip" })
+            channel:push({ status = "skip", reason = "Failed to fetch version from " .. versionUrl })
             return
         end
 
         remoteVersion = remoteVersion:match("^%s*(.-)%s*$")
 
         if remoteVersion == localVersion then
-            channel:push({ status = "up_to_date" })
+            channel:push({ status = "up_to_date", version = remoteVersion })
             return
         end
 
@@ -212,7 +226,7 @@ function level.checkForUpdates()
         if body then
             channel:push({ status = "ok", body = body, version = remoteVersion })
         else
-            channel:push({ status = "skip" })
+            channel:push({ status = "skip", reason = "Failed to fetch levels from " .. levelsUrl })
         end
     ]])
 
@@ -240,17 +254,23 @@ function level.updateCheck()
             levels = mergeLevels(bundled, downloaded)
             level.newLevelsCount = #levels - oldCount
 
+            print("[level] Updated to version: " .. tostring(result.version))
+            print("[level] Downloaded " .. #downloaded .. " levels, " .. level.newLevelsCount .. " new")
+            print("[level] Total: " .. #levels .. " levels")
+
             if level.newLevelsCount > 0 then
                 level.updateMessage = level.newLevelsCount .. " new levels added!"
             end
             level.updateStatus = "done"
         else
+            print("[level] Failed to parse downloaded JSON")
             level.updateStatus = "idle"
         end
     elseif result.status == "up_to_date" then
+        print("[level] Up to date (version: " .. tostring(result.version) .. ")")
         level.updateStatus = "idle"
     else
-        -- skip / error: silently continue with bundled levels
+        print("[level] Skipped update: " .. tostring(result.reason))
         level.updateStatus = "idle"
     end
 end
