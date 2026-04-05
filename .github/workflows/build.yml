@@ -31,7 +31,7 @@ jobs:
           zip -r gridlock.love . \
             -x ".git/*" ".github/*" ".idea/*" "tools/*" "docs/*" \
             ".editorconfig" ".gitignore" "LICENSE" "README.md" \
-            "assets/icon.svg" "assets/icon.ico" "assets/icon.icns"
+            "assets/icon/*"
 
       - name: Upload .love artifact
         uses: actions/upload-artifact@v5
@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: assets/icon.icns
+          sparse-checkout: assets/icon/icon.icns
           sparse-checkout-cone-mode: false
 
       - name: Download .love file
@@ -66,9 +66,9 @@ jobs:
           cp gridlock.love Gridlock.app/Contents/Resources/
 
           # Use pre-built .icns icon
-          if [ -f assets/icon.icns ]; then
-            cp assets/icon.icns "Gridlock.app/Contents/Resources/OS X AppIcon.icns"
-            cp assets/icon.icns Gridlock.app/Contents/Resources/GameIcon.icns
+          if [ -f assets/icon/icon.icns ]; then
+            cp assets/icon/icon.icns "Gridlock.app/Contents/Resources/OS X AppIcon.icns"
+            cp assets/icon/icon.icns Gridlock.app/Contents/Resources/GameIcon.icns
           fi
 
           plutil -replace CFBundleName -string "Gridlock" Gridlock.app/Contents/Info.plist
@@ -90,7 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: assets/icon.ico
+          sparse-checkout: assets/icon/icon.ico
           sparse-checkout-cone-mode: false
 
       - name: Download .love file
@@ -142,7 +142,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: assets/icon.png
+          sparse-checkout: assets/icon/icon.png
           sparse-checkout-cone-mode: false
 
       - name: Download .love file
@@ -160,8 +160,8 @@ jobs:
           npx love.js@11.4.1 gridlock.love build/web -t "Gridlock" -c
 
           # Copy pre-built icon as favicon
-          if [ -f assets/icon.png ]; then
-            cp assets/icon.png build/web/favicon.png
+          if [ -f assets/icon/icon.png ]; then
+            cp assets/icon/icon.png build/web/favicon.png
             # Add favicon link to generated index.html
             sed -i 's|</head>|<link rel="icon" type="image/png" href="favicon.png"></head>|' build/web/index.html
           fi

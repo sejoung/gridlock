@@ -29,7 +29,7 @@ jobs:
           zip -r gridlock.love . \
             -x ".git/*" ".github/*" ".idea/*" "tools/*" "docs/*" \
             ".editorconfig" ".gitignore" "LICENSE" "README.md" \
-            "assets/icon.svg" "assets/icon.ico" "assets/icon.icns"
+            "assets/icon/*"
 
       - name: Upload .love artifact
         uses: actions/upload-artifact@v5
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: assets/icon.icns
+          sparse-checkout: assets/icon/icon.icns
           sparse-checkout-cone-mode: false
 
       - name: Download .love file
@@ -63,9 +63,9 @@ jobs:
           cp -r "$LOVE_APP" Gridlock.app
           cp gridlock.love Gridlock.app/Contents/Resources/
 
-          if [ -f assets/icon.icns ]; then
-            cp assets/icon.icns "Gridlock.app/Contents/Resources/OS X AppIcon.icns"
-            cp assets/icon.icns Gridlock.app/Contents/Resources/GameIcon.icns
+          if [ -f assets/icon/icon.icns ]; then
+            cp assets/icon/icon.icns "Gridlock.app/Contents/Resources/OS X AppIcon.icns"
+            cp assets/icon/icon.icns Gridlock.app/Contents/Resources/GameIcon.icns
           fi
 
           plutil -replace CFBundleName -string "Gridlock" Gridlock.app/Contents/Info.plist
@@ -87,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: assets/icon.ico
+          sparse-checkout: assets/icon/icon.ico
           sparse-checkout-cone-mode: false
 
       - name: Download .love file

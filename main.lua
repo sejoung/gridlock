@@ -4,9 +4,9 @@ function love.load()
     love.graphics.setBackgroundColor(0.15, 0.15, 0.18)
 
     -- Window icon
-    local iconInfo = love.filesystem.getInfo("assets/icon.png")
+    local iconInfo = love.filesystem.getInfo("assets/ui/window_icon.png")
     if iconInfo then
-        local iconData = love.image.newImageData("assets/icon.png")
+        local iconData = love.image.newImageData("assets/ui/window_icon.png")
         love.window.setIcon(iconData)
     end
 

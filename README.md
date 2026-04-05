@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.svg" alt="Gridlock" width="128" height="128">
+  <img src="assets/icon/icon.svg" alt="Gridlock" width="128" height="128">
 </p>
 
 <h1 align="center">Gridlock</h1>
