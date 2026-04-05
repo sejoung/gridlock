@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1">
   <title>Gridlock - A Parking Puzzle</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <style>
@@ -36,11 +37,25 @@
     .game-wrapper {
       position: relative;
       margin: 12px 0;
+      width: 800px;
+      height: 600px;
     }
+
+    /* canvas must not have border or padding - mouse coords will be wrong */
     #canvas {
-      border: 2px solid #2a2a3a;
-      border-radius: 8px;
+      border: 0px none;
+      padding: 0;
       display: block;
+      visibility: hidden;
+    }
+    #loadingCanvas {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .game-border {
+      display: inline-block;
     }
 
     .controls {
@@ -114,8 +129,11 @@
     <p>A Parking Puzzle Game</p>
   </div>
 
-  <div class="game-wrapper">
-    <canvas id="canvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
+  <div class="game-border">
+    <div class="game-wrapper">
+      <canvas id="loadingCanvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
+      <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    </div>
   </div>
 
   <div class="controls">
@@ -150,11 +168,30 @@
   </div>
 
   <script type="text/javascript">
+    window.onload = function () { window.focus(); };
+    window.onclick = function () { window.focus(); };
+
+    window.addEventListener("keydown", function(e) {
+      if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+        e.preventDefault();
+      }
+    }, false);
+
+    var loadingContext = document.getElementById('loadingCanvas').getContext('2d');
+    function drawLoadingText(text) {
+      var canvas = loadingContext.canvas;
+      loadingContext.fillStyle = '#0f0f1a';
+      loadingContext.fillRect(0, 0, canvas.scrollWidth, canvas.scrollHeight);
+      loadingContext.font = '18px -apple-system, sans-serif';
+      loadingContext.textAlign = 'center';
+      loadingContext.fillStyle = '#888';
+      loadingContext.fillText(text, canvas.scrollWidth / 2, canvas.scrollHeight / 2);
+    }
+
     var Module = {
       arguments: ['./game.love'],
       INITIAL_MEMORY: 16777216,
-      printErr: function(text) { if (text) console.error('[love]', text); },
-      print: function(text) { if (text) console.log('[love]', text); },
+      printErr: console.error.bind(console),
       canvas: (function() {
         var canvas = document.getElementById('canvas');
         canvas.addEventListener('webglcontextlost', function(e) {
@@ -164,21 +201,35 @@
         return canvas;
       })(),
       setStatus: function(text) {
-        if (text) console.log('[status]', text);
+        if (text) {
+          drawLoadingText(text);
+        } else if (Module.remainingDependencies === 0) {
+          document.getElementById('loadingCanvas').style.display = 'none';
+          document.getElementById('canvas').style.visibility = 'visible';
+        }
       },
       totalDependencies: 0,
+      remainingDependencies: 0,
       monitorRunDependencies: function(left) {
+        this.remainingDependencies = left;
         this.totalDependencies = Math.max(this.totalDependencies, left);
+        Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
       }
+    };
+    Module.setStatus('Downloading...');
+
+    window.onerror = function(event) {
+      Module.setStatus('Exception thrown, see JavaScript console');
+      Module.setStatus = function(text) {
+        if (text) Module.printErr('[post-exception status] ' + text);
+      };
     };
 
     var applicationLoad = function(e) {
       Love(Module);
     }
   </script>
-  <!-- game.js must load synchronously BEFORE love.js -->
   <script type="text/javascript" src="game.js"></script>
-  <!-- love.js loads async, calls Love(Module) on completion -->
   <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>
 
 </body>
