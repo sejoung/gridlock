@@ -380,6 +380,8 @@
 
         <div class="control-group">
           <div class="count-row">
+            <label>Start ID</label>
+            <input type="number" class="count-input" id="startIdInput" value="1" min="1" max="999">
             <label>Count</label>
             <input type="number" class="count-input" id="countInput" value="5" min="1" max="50">
           </div>
@@ -852,11 +854,10 @@ const statusEl = document.getElementById('status');
 
 generateBtn.addEventListener('click', async () => {
   const count = parseInt(document.getElementById('countInput').value) || 5;
+  const startId = parseInt(document.getElementById('startIdInput').value) || 1;
   generateBtn.disabled = true;
   progressBar.style.display = 'block';
   statusEl.textContent = 'Generating...';
-
-  const startId = generatedLevels.length + 1;
 
   // Use setTimeout to keep UI responsive
   let generated = 0;
@@ -867,12 +868,13 @@ generateBtn.addEventListener('click', async () => {
       diff = r < 0.35 ? 'easy' : r < 0.75 ? 'medium' : 'hard';
     }
 
-    statusEl.textContent = `Generating level ${startId + i} (${diff})...`;
+    const levelId = startId + i;
+    statusEl.textContent = `Generating level ${levelId} (${diff})...`;
     progressFill.style.width = ((i / count) * 100) + '%';
 
     await new Promise(resolve => setTimeout(resolve, 10));
 
-    const level = generateLevel(diff, startId + i);
+    const level = generateLevel(diff, levelId);
     if (level) {
       generatedLevels.push(level);
       generated++;
@@ -890,6 +892,9 @@ generateBtn.addEventListener('click', async () => {
 
   if (generatedLevels.length > 0) {
     selectLevel(generatedLevels.length - 1);
+    // Update Start ID to next available
+    const maxId = Math.max(...generatedLevels.map(l => l.id));
+    document.getElementById('startIdInput').value = maxId + 1;
   }
 });
 
@@ -906,7 +911,7 @@ function renderLevelList() {
     const diff = level.difficulty;
     return `
       <div class="level-item ${i === selectedIndex ? 'active' : ''}" onclick="selectLevel(${i})">
-        <span class="level-num">#${i + 1}</span>
+        <span class="level-num">#${level.id}</span>
         <span class="level-diff ${diff}">${diff}</span>
         <span class="level-moves">${level.minMoves} moves</span>
         <span class="level-cars">${level.cars.length} cars</span>
@@ -935,7 +940,7 @@ function selectLevel(index) {
 
   const luaEl = document.getElementById('luaOutput');
   luaEl.style.display = 'block';
-  luaEl.textContent = toLua(level, index + 1);
+  luaEl.textContent = toLua(level, level.id);
 }
 
 function removeLevel(index) {
@@ -953,11 +958,12 @@ function removeLevel(index) {
 
 function downloadLevel(index) {
   const level = generatedLevels[index];
-  const lua = toLua(level, index + 1) + '\n';
+  const id = level.id;
+  const lua = toLua(level, id) + '\n';
   const blob = new Blob([lua], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `level${index + 1}.lua`;
+  a.download = `level${id}.lua`;
   a.click();
   URL.revokeObjectURL(a.href);
 }

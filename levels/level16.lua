@@ -1,5 +1,5 @@
 return {
-    id = 4,
+    id = 16,
     exit = { side = "right", row = 3 },
     -- minMoves = 9, difficulty = medium
     cars = {
