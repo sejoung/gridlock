@@ -9,7 +9,9 @@
   Inspired by the classic <a href="https://en.wikipedia.org/wiki/Rush_Hour_(puzzle)">Rush Hour</a> board game.
 </p>
 
-Built with [Love2D](https://love2d.org) — runs on macOS, Windows, and Web.
+<p align="center">
+  Built with <a href="https://love2d.org">Love2D</a> — runs on macOS, Windows, Web, and mobile.
+</p>
 
 ## Gameplay
 
@@ -42,8 +44,7 @@ Download the latest release from [Releases](https://github.com/sejoung/gridlock/
 
 ```bash
 # Install Love2D
-brew install love      # macOS
-# or download from https://love2d.org
+# Download from https://love2d.org
 
 # Clone and run
 git clone https://github.com/sejoung/gridlock.git
@@ -55,20 +56,36 @@ love .
 
 | Input | Action |
 |-------|--------|
-| Mouse drag | Move a car |
+| Mouse drag / Touch | Move a car |
+| `H` | Hint (progressive: highlight → direction → auto-move) |
 | `U` | Undo last move |
 | `R` | Reset level |
 | `Esc` | Quit |
 
 ## Features
 
-- 10 hand-crafted levels with pixel art car sprites
+- 17 levels with pixel art car sprites
+- Progressive hint system (BFS solver powered)
 - Undo / Reset with move counter
 - Smooth move animations and shake feedback on invalid moves
 - Pulsing exit indicator
 - Procedural sound effects
 - Save system (tracks cleared levels and best move counts)
 - Level select screen with clear status
+- Auto-update: new levels downloaded from server on launch
+- Responsive display: scales to any screen size with virtual resolution
+
+## Hint System
+
+Press `H` or click the Hint button for progressive help:
+
+| Press | Action |
+|-------|--------|
+| 1st | Highlights which car to move (green glow) |
+| 2nd | Shows the direction to move (arrow) |
+| 3rd | Automatically performs the move |
+
+Hints are calculated using a BFS solver from the current board state. Using hints is marked on the clear screen.
 
 ## Level Generator
 
@@ -90,32 +107,48 @@ Difficulty is determined by the minimum number of moves to solve (BFS):
 | Medium | 9 - 16 |
 | Hard | 17+ |
 
+## Auto-Update
+
+The game checks for new levels on launch via GitHub Pages:
+
+1. Fetches `levels-version.txt` (lightweight version check)
+2. If version differs, downloads `levels.json` with new level data
+3. Caches locally — works offline after first download
+
+New levels are added by pushing `.lua` files to the `levels/` folder. CI automatically generates and deploys the update.
+
 ## Project Structure
 
 ```
 gridlock/
 ├── main.lua              # Entry point
-├── conf.lua              # Love2D config
+├── conf.lua              # Love2D config (resizable window)
 ├── src/
 │   ├── game.lua          # Game state management
 │   ├── board.lua         # Grid, collision, clear detection
-│   ├── car.lua           # Car rendering and logic
+│   ├── car.lua           # Car rendering with sprites
 │   ├── car_types.lua     # Car type definitions (len, sprite)
-│   ├── input.lua         # Mouse drag input handling
-│   ├── level.lua         # Level file loader
+│   ├── input.lua         # Mouse/touch drag input
+│   ├── level.lua         # Level loader + auto-update
+│   ├── hint.lua          # BFS solver + progressive hints
 │   ├── save.lua          # Save/load cleared data
 │   ├── ui.lua            # UI screens (title, level select, HUD, clear)
 │   ├── anim.lua          # Move/shake animations
-│   └── sound.lua         # Procedural sound effects
+│   ├── sound.lua         # Procedural sound effects
+│   ├── screen.lua        # Virtual resolution scaling
+│   └── json.lua          # Lightweight JSON parser
 ├── assets/
-│   └── cars/             # Pixel art car sprites
+│   ├── cars/             # Pixel art car sprites
+│   ├── tiles/            # Tileset for board rendering
+│   ├── ui/               # UI assets (window icon)
+│   └── icon/             # App icons (svg, png, ico, icns, android)
 ├── levels/
 │   ├── level1.lua        # Level data files
 │   └── ...
 └── tools/
     ├── generator.html    # Web-based level generator/analyzer
-    ├── solver.lua        # BFS puzzle solver
-    └── generator.lua     # Random level generator
+    ├── generate-icons.sh # Generate all icon formats from SVG
+    └── build-levels-json.sh  # Convert levels to JSON for auto-update
 ```
 
 ## Level Format
@@ -138,18 +171,32 @@ Available car types are defined in `src/car_types.lua`. Length is determined by 
 
 ## Building
 
-Builds are automated via GitHub Actions. Push a version tag to trigger:
+### Continuous Build (every push to main)
+
+Automatically builds all platforms and deploys web version to GitHub Pages.
+
+### Release (tag-based)
 
 ```bash
 git tag v1.0.0
 git push origin --tags
 ```
 
-This produces:
+Creates a GitHub Release with:
 - `.love` file (universal)
-- macOS app bundle (`.app`)
-- Windows executable (`.exe`)
+- macOS app bundle (`.app`) with custom icon
+- Windows executable (`.exe`) with custom icon
 - Web build (deployed to GitHub Pages)
+
+### Icons
+
+Generate all icon formats from `assets/icon/icon.svg`:
+
+```bash
+./tools/generate-icons.sh
+```
+
+Produces `icon.png`, `icon.ico`, `icon.icns`, and Android mipmap icons.
 
 ## Tech Stack
 
@@ -157,8 +204,8 @@ This produces:
 - **Language:** Lua
 - **Art:** 2D top-down pixel art
 - **Level Tool:** HTML/JS with BFS solver
-- **CI/CD:** GitHub Actions
-- **Hosting:** GitHub Pages (web build)
+- **CI/CD:** GitHub Actions (build on push + release on tag)
+- **Hosting:** GitHub Pages (web build + level auto-update)
 
 ## License
 
