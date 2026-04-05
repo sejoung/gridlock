@@ -10,6 +10,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LEVELS_DIR="$PROJECT_DIR/levels"
 OUTPUT="$PROJECT_DIR/docs/levels.json"
 
+mkdir -p "$PROJECT_DIR/docs"
 echo "Building levels.json..."
 
 VERSION=$(date +%Y%m%d%H%M%S)
