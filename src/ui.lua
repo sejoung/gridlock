@@ -98,6 +98,20 @@ function ui.drawTitle()
     drawButton("Level Select", bx, 315)
     drawButton("Exit", bx, 380)
 
+    -- Level update status
+    local levelMod = require("src.level")
+    love.graphics.setFont(smallFont)
+    if levelMod.updateStatus == "done" and levelMod.newLevelsCount > 0 then
+        love.graphics.setColor(0.4, 0.8, 0.4)
+        local msg = levelMod.updateMessage
+        love.graphics.print(msg, (800 - smallFont:getWidth(msg)) / 2, 440)
+    end
+
+    -- Level count
+    love.graphics.setColor(0.4, 0.4, 0.45)
+    local countText = levelMod.count() .. " levels"
+    love.graphics.print(countText, (800 - smallFont:getWidth(countText)) / 2, 460)
+
     -- Footer
     love.graphics.setFont(smallFont)
     love.graphics.setColor(0.35, 0.35, 0.4)

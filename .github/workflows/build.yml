@@ -141,9 +141,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          sparse-checkout: assets/icon/icon.png
-          sparse-checkout-cone-mode: false
 
       - name: Download .love file
         uses: actions/download-artifact@v5
@@ -155,6 +152,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Build levels.json
+        run: ./tools/build-levels-json.sh
+
       - name: Build with love.js
         run: |
           npx love.js@11.4.1 gridlock.love build/web -t "Gridlock" -c
@@ -162,9 +162,12 @@ jobs:
           # Copy pre-built icon as favicon
           if [ -f assets/icon/icon.png ]; then
             cp assets/icon/icon.png build/web/favicon.png
-            # Add favicon link to generated index.html
             sed -i 's|</head>|<link rel="icon" type="image/png" href="favicon.png"></head>|' build/web/index.html
           fi
+
+          # Include level data for auto-update API
+          cp docs/levels.json build/web/levels.json
+          cp docs/levels-version.txt build/web/levels-version.txt
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v5

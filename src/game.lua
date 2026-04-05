@@ -21,9 +21,14 @@ function game.load()
     level.loadAll()
     sound.load()
     ui.loadFonts()
+    -- Auto-check for level updates on launch
+    level.checkForUpdates()
 end
 
 function game.update(dt)
+    -- Process level update downloads
+    level.updateCheck()
+
     if game.state == "playing" then
         input.update(dt)
         board.update(dt)
