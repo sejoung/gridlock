@@ -17,10 +17,16 @@ function screen.getVirtualSize()
 end
 
 function screen.load()
-    screen.resize(love.graphics.getDimensions())
+    local w, h = love.graphics.getDimensions()
+    -- Fallback if dimensions are 0 (web build edge case)
+    if w == 0 or h == 0 then
+        w, h = VIRTUAL_W, VIRTUAL_H
+    end
+    screen.resize(w, h)
 end
 
 function screen.resize(w, h)
+    if w <= 0 or h <= 0 then return end
     actualW = w
     actualH = h
 
@@ -43,17 +49,10 @@ end
 function screen.beginDraw()
     love.graphics.clear(0, 0, 0)
 
-    -- Letterbox bars
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.rectangle("fill", 0, 0, actualW, actualH)
-
     -- Set up transform: translate + scale
     love.graphics.push()
     love.graphics.translate(offsetX, offsetY)
     love.graphics.scale(scale, scale)
-
-    -- Clip to virtual area
-    love.graphics.setScissor(offsetX, offsetY, VIRTUAL_W * scale, VIRTUAL_H * scale)
 
     -- Clear virtual area with background color
     love.graphics.setColor(0.1, 0.1, 0.14)
@@ -62,7 +61,6 @@ end
 
 -- End rendering
 function screen.endDraw()
-    love.graphics.setScissor()
     love.graphics.pop()
 end
 
