@@ -1,8 +1,7 @@
 local game = require("src.game")
+local screen = require("src.screen")
 
 function love.load()
-    love.graphics.setBackgroundColor(0.15, 0.15, 0.18)
-
     -- Window icon
     local iconInfo = love.filesystem.getInfo("assets/ui/window_icon.png")
     if iconInfo then
@@ -10,6 +9,7 @@ function love.load()
         love.window.setIcon(iconData)
     end
 
+    screen.load()
     game.load()
 end
 
@@ -18,19 +18,43 @@ function love.update(dt)
 end
 
 function love.draw()
+    screen.beginDraw()
     game.draw()
+    screen.endDraw()
+end
+
+function love.resize(w, h)
+    screen.resize(w, h)
 end
 
 function love.mousepressed(x, y, button)
-    game.mousepressed(x, y, button)
+    local vx, vy = screen.toVirtual(x, y)
+    game.mousepressed(vx, vy, button)
 end
 
 function love.mousereleased(x, y, button)
-    game.mousereleased(x, y, button)
+    local vx, vy = screen.toVirtual(x, y)
+    game.mousereleased(vx, vy, button)
 end
 
 function love.mousemoved(x, y, dx, dy)
-    game.mousemoved(x, y, dx, dy)
+    local vx, vy = screen.toVirtual(x, y)
+    game.mousemoved(vx, vy, dx / 1, dy / 1)
+end
+
+function love.touchpressed(id, x, y)
+    local vx, vy = screen.toVirtual(x, y)
+    game.mousepressed(vx, vy, 1)
+end
+
+function love.touchreleased(id, x, y)
+    local vx, vy = screen.toVirtual(x, y)
+    game.mousereleased(vx, vy, 1)
+end
+
+function love.touchmoved(id, x, y, dx, dy)
+    local vx, vy = screen.toVirtual(x, y)
+    game.mousemoved(vx, vy, dx, dy)
 end
 
 function love.keypressed(key)
