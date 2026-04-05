@@ -63,10 +63,13 @@ jobs:
           cp -r "$LOVE_APP" Gridlock.app
           cp gridlock.love Gridlock.app/Contents/Resources/
 
+          # Replace icon: remove Asset Catalog (overrides .icns) and set custom icon
+          rm -f Gridlock.app/Contents/Resources/Assets.car
           if [ -f assets/icon/icon.icns ]; then
             cp assets/icon/icon.icns "Gridlock.app/Contents/Resources/OS X AppIcon.icns"
             cp assets/icon/icon.icns Gridlock.app/Contents/Resources/GameIcon.icns
           fi
+          plutil -remove CFBundleIconName Gridlock.app/Contents/Info.plist 2>/dev/null || true
 
           plutil -replace CFBundleName -string "Gridlock" Gridlock.app/Contents/Info.plist
           plutil -replace CFBundleIdentifier -string "com.gridlock.game" Gridlock.app/Contents/Info.plist
