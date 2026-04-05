@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gridlock - A Parking Puzzle</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0f0f1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 32px 16px 16px;
+    }
+    .header h1 {
+      font-size: 36px;
+      color: #fff;
+      letter-spacing: 4px;
+    }
+    .header p {
+      color: #888;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    /* Game area */
+    .game-wrapper {
+      position: relative;
+      margin: 16px 0;
+    }
+    canvas {
+      border: 2px solid #2a2a3a;
+      border-radius: 8px;
+      display: block;
+    }
+
+    /* Loading */
+    .loading-container {
+      text-align: center;
+      margin-top: 12px;
+    }
+    .loading-text {
+      color: #888;
+      font-size: 13px;
+    }
+    .loading-bar {
+      width: 300px;
+      height: 4px;
+      background: #222;
+      border-radius: 2px;
+      margin: 8px auto 0;
+      overflow: hidden;
+    }
+    .loading-fill {
+      height: 100%;
+      background: #5555cc;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .loading-container.hidden { display: none; }
+
+    /* Controls info */
+    .controls {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .control-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #666;
+    }
+    .key {
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #aaa;
+    }
+
+    /* Links */
+    .links {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #8888cc;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 8px 16px;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .links a:hover {
+      background: #1a1a3a;
+      border-color: #5555aa;
+      color: #aaaaee;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: auto;
+      padding: 24px 16px;
+      text-align: center;
+      color: #444;
+      font-size: 12px;
+      width: 100%;
+      border-top: 1px solid #1a1a2a;
+    }
+    .footer a {
+      color: #666;
+      text-decoration: none;
+    }
+    .footer a:hover { color: #999; }
+
+    /* SVG icons inline */
+    .icon-svg { width: 16px; height: 16px; fill: currentColor; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <img src="icon.svg" alt="Gridlock" width="80" height="80" style="margin-bottom: 8px;">
+    <h1>GRIDLOCK</h1>
+    <p>A Parking Puzzle Game</p>
+  </div>
+
+  <div class="game-wrapper">
+    <canvas id="canvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
+  </div>
+
+  <div class="loading-container" id="loadingContainer">
+    <div class="loading-text" id="loadingText">Loading...</div>
+    <div class="loading-bar"><div class="loading-fill" id="loadingFill"></div></div>
+  </div>
+
+  <div class="controls">
+    <div class="control-item"><span class="key">Drag</span> Move car</div>
+    <div class="control-item"><span class="key">H</span> Hint</div>
+    <div class="control-item"><span class="key">U</span> Undo</div>
+    <div class="control-item"><span class="key">R</span> Reset</div>
+  </div>
+
+  <div class="links">
+    <a href="generator.html">
+      <svg class="icon-svg" viewBox="0 0 16 16"><path d="M8 0a8 8 0 110 16A8 8 0 018 0zm.75 4.75a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z"/></svg>
+      Level Generator
+    </a>
+    <a href="https://github.com/sejoung/gridlock">
+      <svg class="icon-svg" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+    <a href="https://github.com/sejoung/gridlock/releases">
+      <svg class="icon-svg" viewBox="0 0 16 16"><path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 010 2.474l-5.026 5.026a1.75 1.75 0 01-2.474 0l-6.25-6.25A1.752 1.752 0 011 7.775zM6 5a1 1 0 100-2 1 1 0 000 2z"/></svg>
+      Download
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>
+      Built with <a href="https://love2d.org">Love2D</a>
+      by <a href="https://github.com/sejoung">sejoung</a>
+      &middot;
+      <a href="https://github.com/sejoung/gridlock">Open Source (Apache 2.0)</a>
+    </p>
+  </div>
+
+  <script type="text/javascript">
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      setStatus: function(text) {
+        var container = document.getElementById('loadingContainer');
+        var el = document.getElementById('loadingText');
+        var bar = document.getElementById('loadingFill');
+        if (!text) {
+          container.classList.add('hidden');
+          return;
+        }
+        container.classList.remove('hidden');
+        el.textContent = text;
+        var m = text.match(/(\d+(\.\d+)?)\//);
+        if (m) bar.style.width = (100 - parseInt(m[1])) + '%';
+      }
+    };
+  </script>
+  <script type="text/javascript" src="love.js"></script>
+
+</body>
+</html>
