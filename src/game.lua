@@ -5,6 +5,7 @@ local ui = require("src.ui")
 local save = require("src.save")
 local sound = require("src.sound")
 local anim = require("src.anim")
+local hint = require("src.hint")
 
 local game = {}
 
@@ -13,6 +14,7 @@ game.state = "title"
 game.currentLevel = 1
 game.moveCount = 0
 game.undoStack = {}
+game.hintUsed = false
 
 function game.load()
     save.load()
@@ -25,6 +27,7 @@ function game.update(dt)
     if game.state == "playing" then
         input.update(dt)
         board.update(dt)
+        hint.update(dt)
     elseif game.state == "clear" then
         board.update(dt)
     end
@@ -38,10 +41,11 @@ function game.draw()
         ui.drawLevelSelect(level.count(), save.getData())
     elseif game.state == "playing" then
         board.draw()
-        ui.drawHUD(game.currentLevel, game.moveCount)
+        hint.drawHint(board)
+        ui.drawHUD(game.currentLevel, game.moveCount, game.hintUsed)
     elseif game.state == "clear" then
         board.draw()
-        ui.drawClear(game.currentLevel, game.moveCount)
+        ui.drawClear(game.currentLevel, game.moveCount, game.hintUsed)
     end
 end
 
@@ -49,9 +53,11 @@ function game.startLevel(levelNum)
     game.currentLevel = levelNum
     game.moveCount = 0
     game.undoStack = {}
+    game.hintUsed = false
     local data = level.get(levelNum)
     board.init(data)
     anim.reset()
+    hint.reset()
     input.init(board, {
         onCarMoved = game.onCarMoved,
         onClear = game.onClear,
@@ -62,6 +68,7 @@ end
 function game.onCarMoved(snapshot)
     table.insert(game.undoStack, snapshot)
     game.moveCount = game.moveCount + 1
+    hint.invalidate()
 end
 
 function game.undo()
@@ -69,12 +76,51 @@ function game.undo()
         local snapshot = table.remove(game.undoStack)
         board.restore(snapshot)
         game.moveCount = game.moveCount - 1
+        hint.invalidate()
         sound.play("undo")
     end
 end
 
 function game.reset()
     game.startLevel(game.currentLevel)
+end
+
+function game.hint()
+    local action, moveData = hint.request(board)
+
+    if action == "show_car" then
+        game.hintUsed = true
+        sound.play("click")
+    elseif action == "show_direction" then
+        sound.play("click")
+    elseif action == "auto_move" and moveData then
+        -- Find the car and perform the move
+        local targetCar = nil
+        for _, c in ipairs(board.cars) do
+            if c.id == moveData.carId then
+                targetCar = c
+                break
+            end
+        end
+        if targetCar then
+            local snap = board.snapshot()
+            -- Apply only 1 step in the move direction
+            local stepX = moveData.dx > 0 and 1 or (moveData.dx < 0 and -1 or 0)
+            local stepY = moveData.dy > 0 and 1 or (moveData.dy < 0 and -1 or 0)
+            targetCar.x = targetCar.x + stepX
+            targetCar.y = targetCar.y + stepY
+            anim.startMove(targetCar.id, stepX, stepY, board.CELL_SIZE)
+            sound.play("move")
+            game.onCarMoved(snap)
+
+            if board.checkClear() then
+                sound.play("clear")
+                game.onClear()
+            end
+        end
+    elseif action == "no_solution" then
+        sound.play("invalid")
+    end
 end
 
 function game.onClear()
@@ -126,6 +172,8 @@ function game.keypressed(key)
             game.undo()
         elseif key == "r" then
             game.reset()
+        elseif key == "h" then
+            game.hint()
         end
     end
 end

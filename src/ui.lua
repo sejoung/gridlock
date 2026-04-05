@@ -217,7 +217,7 @@ end
 local HUD_BTN_W = 90
 local HUD_BTN_H = 34
 
-function ui.drawHUD(levelNum, moveCount)
+function ui.drawHUD(levelNum, moveCount, hintUsed)
     -- Top bar background
     love.graphics.setColor(0.12, 0.12, 0.15, 0.9)
     love.graphics.rectangle("fill", 0, 0, 800, 40)
@@ -228,6 +228,9 @@ function ui.drawHUD(levelNum, moveCount)
 
     love.graphics.setColor(0.8, 0.8, 0.5)
     local movesText = "Moves: " .. moveCount
+    if hintUsed then
+        movesText = movesText .. "  (Hint)"
+    end
     local mw = bodyFont:getWidth(movesText)
     love.graphics.print(movesText, 800 - mw - 20, 10)
 
@@ -237,6 +240,7 @@ function ui.drawHUD(levelNum, moveCount)
 
     drawButton("Undo (U)", 16, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
     drawButton("Reset (R)", 116, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
+    drawButton("Hint (H)", 216, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
     drawButton("Menu", 800 - HUD_BTN_W - 16, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
 end
 
@@ -247,6 +251,9 @@ function ui.hudClick(x, y, game)
     elseif isInside(x, y, 116, 560, HUD_BTN_W, HUD_BTN_H) then
         game.reset()
         return true
+    elseif isInside(x, y, 216, 560, HUD_BTN_W, HUD_BTN_H) then
+        game.hint()
+        return true
     elseif isInside(x, y, 800 - HUD_BTN_W - 16, 560, HUD_BTN_W, HUD_BTN_H) then
         game.state = "title"
         return true
@@ -256,7 +263,7 @@ end
 
 -- Clear Screen
 
-function ui.drawClear(levelNum, moveCount)
+function ui.drawClear(levelNum, moveCount, hintUsed)
     -- Dark overlay
     love.graphics.setColor(0, 0, 0, 0.65)
     love.graphics.rectangle("fill", 0, 0, 800, 600)
@@ -291,6 +298,14 @@ function ui.drawClear(levelNum, moveCount)
     local moves = "Moves: " .. moveCount
     local mw = bodyFont:getWidth(moves)
     love.graphics.print(moves, (800 - mw) / 2, py + 100)
+
+    if hintUsed then
+        love.graphics.setFont(smallFont)
+        love.graphics.setColor(0.8, 0.6, 0.3)
+        local hintText = "Hint used"
+        local hw = smallFont:getWidth(hintText)
+        love.graphics.print(hintText, (800 - hw) / 2, py + 120)
+    end
 
     -- Buttons
     local bx = (800 - BUTTON_W) / 2
