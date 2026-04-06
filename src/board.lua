@@ -1,4 +1,5 @@
 local car = require("src.car")
+local screen = require("src.screen")
 
 local board = {}
 
@@ -11,10 +12,11 @@ board.exit = nil
 board.exitPulse = 0  -- for exit glow animation
 
 function board.init(levelData)
-    -- Center the board in the window
+    -- Center the board in the virtual window
+    local vw, vh = screen.getVirtualSize()
     local totalSize = board.GRID_SIZE * board.CELL_SIZE
-    board.OFFSET_X = (800 - totalSize) / 2
-    board.OFFSET_Y = (600 - totalSize) / 2 + 20
+    board.OFFSET_X = (vw - totalSize) / 2
+    board.OFFSET_Y = (vh - totalSize) / 2 + 20
 
     board.exit = levelData.exit
     board.cars = {}

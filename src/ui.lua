@@ -13,6 +13,10 @@ local smallFont = nil
 local mouseX, mouseY = 0, 0
 -- Button hover animation
 local hoverAlpha = 0
+-- Level select scroll
+local scrollOffset = 0
+local scrollTarget = 0
+local maxScroll = 0
 
 function ui.loadFonts()
     titleFont = love.graphics.newFont(40)
@@ -22,7 +26,13 @@ function ui.loadFonts()
 end
 
 function ui.update(dt)
-    -- Could add hover animations here
+    -- Smooth scroll for level select
+    if scrollOffset ~= scrollTarget then
+        scrollOffset = scrollOffset + (scrollTarget - scrollOffset) * math.min(1, dt * 12)
+        if math.abs(scrollOffset - scrollTarget) < 0.5 then
+            scrollOffset = scrollTarget
+        end
+    end
 end
 
 function ui.mousemoved(x, y)
@@ -152,6 +162,16 @@ function ui.drawLevelSelect(levelCount, saveData)
     local gap = 16
     local startX = (800 - (cols * (btnSize + gap) - gap)) / 2
     local startY = 90
+    local rows = math.ceil(levelCount / cols)
+    local contentHeight = rows * (btnSize + gap) - gap
+    local backBtnY = 520
+    local visibleHeight = backBtnY - startY - 10
+
+    -- Calculate max scroll
+    maxScroll = math.max(0, contentHeight - visibleHeight)
+
+    -- Clip the level grid area
+    love.graphics.setScissor(0, startY, 800, visibleHeight)
 
     love.graphics.setFont(bodyFont)
 
@@ -159,46 +179,64 @@ function ui.drawLevelSelect(levelCount, saveData)
         local col = (i - 1) % cols
         local row = math.floor((i - 1) / cols)
         local bx = startX + col * (btnSize + gap)
-        local by = startY + row * (btnSize + gap)
+        local by = startY + row * (btnSize + gap) - scrollOffset
 
-        local hovered = isHovered(bx, by, btnSize, btnSize)
+        -- Skip off-screen buttons
+        if by + btnSize >= startY and by <= startY + visibleHeight then
+            local hovered = isHovered(bx, by, btnSize, btnSize)
 
-        if saveData.cleared[i] then
-            love.graphics.setColor(0.15, 0.45, 0.25)
-        elseif hovered then
-            love.graphics.setColor(0.4, 0.4, 0.48)
-        else
-            love.graphics.setColor(0.28, 0.28, 0.33)
-        end
-        love.graphics.rectangle("fill", bx, by, btnSize, btnSize, 8, 8)
+            if saveData.cleared[i] then
+                love.graphics.setColor(0.15, 0.45, 0.25)
+            elseif hovered then
+                love.graphics.setColor(0.4, 0.4, 0.48)
+            else
+                love.graphics.setColor(0.28, 0.28, 0.33)
+            end
+            love.graphics.rectangle("fill", bx, by, btnSize, btnSize, 8, 8)
 
-        if hovered then
-            love.graphics.setColor(1, 1, 0.6, 0.8)
-            love.graphics.setLineWidth(2)
-        else
-            love.graphics.setColor(0.5, 0.5, 0.55)
+            if hovered then
+                love.graphics.setColor(1, 1, 0.6, 0.8)
+                love.graphics.setLineWidth(2)
+            else
+                love.graphics.setColor(0.5, 0.5, 0.55)
+                love.graphics.setLineWidth(1)
+            end
+            love.graphics.rectangle("line", bx, by, btnSize, btnSize, 8, 8)
             love.graphics.setLineWidth(1)
-        end
-        love.graphics.rectangle("line", bx, by, btnSize, btnSize, 8, 8)
-        love.graphics.setLineWidth(1)
 
-        -- Level number
-        love.graphics.setColor(1, 1, 1)
-        local text = tostring(i)
-        local tw = bodyFont:getWidth(text)
-        local th = bodyFont:getHeight()
-        love.graphics.print(text, bx + (btnSize - tw) / 2, by + (btnSize - th) / 2)
+            -- Level number
+            love.graphics.setColor(1, 1, 1)
+            local text = tostring(i)
+            local tw = bodyFont:getWidth(text)
+            local th = bodyFont:getHeight()
+            love.graphics.print(text, bx + (btnSize - tw) / 2, by + (btnSize - th) / 2)
 
-        -- Checkmark for cleared
-        if saveData.cleared[i] then
-            love.graphics.setFont(smallFont)
-            love.graphics.setColor(0.5, 1, 0.5)
-            love.graphics.print("Clear", bx + (btnSize - smallFont:getWidth("Clear")) / 2, by + btnSize - 18)
-            love.graphics.setFont(bodyFont)
+            -- Checkmark for cleared
+            if saveData.cleared[i] then
+                love.graphics.setFont(smallFont)
+                love.graphics.setColor(0.5, 1, 0.5)
+                love.graphics.print("Clear", bx + (btnSize - smallFont:getWidth("Clear")) / 2, by + btnSize - 20)
+                love.graphics.setFont(bodyFont)
+            end
         end
     end
 
-    drawButton("Back", (800 - BUTTON_W) / 2, 520)
+    love.graphics.setScissor()
+
+    -- Scroll indicators
+    if maxScroll > 0 then
+        if scrollOffset > 0 then
+            love.graphics.setColor(1, 1, 1, 0.3)
+            love.graphics.polygon("fill", 400, startY + 2, 392, startY + 10, 408, startY + 10)
+        end
+        if scrollOffset < maxScroll then
+            love.graphics.setColor(1, 1, 1, 0.3)
+            local bottomY = startY + visibleHeight
+            love.graphics.polygon("fill", 400, bottomY - 2, 392, bottomY - 10, 408, bottomY - 10)
+        end
+    end
+
+    drawButton("Back", (800 - BUTTON_W) / 2, backBtnY)
 end
 
 function ui.levelSelectClick(x, y, game)
@@ -213,7 +251,7 @@ function ui.levelSelectClick(x, y, game)
         local col = (i - 1) % cols
         local row = math.floor((i - 1) / cols)
         local bx = startX + col * (btnSize + gap)
-        local by = startY + row * (btnSize + gap)
+        local by = startY + row * (btnSize + gap) - scrollOffset
 
         if isInside(x, y, bx, by, btnSize, btnSize) then
             game.startLevel(i)
@@ -222,8 +260,15 @@ function ui.levelSelectClick(x, y, game)
     end
 
     if isInside(x, y, (800 - BUTTON_W) / 2, 520, BUTTON_W, BUTTON_H) then
+        scrollOffset = 0
+        scrollTarget = 0
         game.state = "title"
     end
+end
+
+function ui.levelSelectScroll(dy)
+    scrollTarget = scrollTarget + dy * 40
+    scrollTarget = math.max(0, math.min(scrollTarget, maxScroll))
 end
 
 -- HUD

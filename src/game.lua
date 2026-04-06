@@ -171,6 +171,12 @@ function game.mousemoved(x, y, dx, dy)
     ui.mousemoved(x, y)
 end
 
+function game.wheelmoved(x, y)
+    if game.state == "level_select" then
+        ui.levelSelectScroll(-y)
+    end
+end
+
 function game.keypressed(key)
     if game.state == "playing" then
         if key == "u" then

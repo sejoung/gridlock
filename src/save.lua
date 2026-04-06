@@ -1,24 +1,32 @@
 local save = {}
+local json = require("src.json")
 
 local data = {
     cleared = {},
     bestMoves = {},
 }
 
-local SAVE_FILE = "gridlock_save.dat"
+local SAVE_FILE = "gridlock_save.json"
 
 function save.load()
     local info = love.filesystem.getInfo(SAVE_FILE)
     if info then
         local contents = love.filesystem.read(SAVE_FILE)
         if contents then
-            local fn, err = loadstring("return " .. contents)
-            if fn then
-                local ok, loaded = pcall(fn)
-                if ok and loaded then
-                    data = loaded
-                    data.cleared = data.cleared or {}
-                    data.bestMoves = data.bestMoves or {}
+            local ok, loaded = pcall(json.decode, contents)
+            if ok and loaded then
+                -- Reconstruct with numeric keys (JSON keys are strings)
+                data.cleared = {}
+                data.bestMoves = {}
+                if loaded.cleared then
+                    for k, v in pairs(loaded.cleared) do
+                        data.cleared[tonumber(k)] = v
+                    end
+                end
+                if loaded.bestMoves then
+                    for k, v in pairs(loaded.bestMoves) do
+                        data.bestMoves[tonumber(k)] = v
+                    end
                 end
             end
         end
@@ -26,18 +34,21 @@ function save.load()
 end
 
 function save.save()
-    local str = "{\n"
-    str = str .. "  cleared = {"
+    local str = '{"cleared":{'
+    local first = true
     for k, v in pairs(data.cleared) do
-        str = str .. "[" .. k .. "]=" .. tostring(v) .. ","
+        if not first then str = str .. "," end
+        str = str .. '"' .. k .. '":' .. tostring(v)
+        first = false
     end
-    str = str .. "},\n"
-    str = str .. "  bestMoves = {"
+    str = str .. '},"bestMoves":{'
+    first = true
     for k, v in pairs(data.bestMoves) do
-        str = str .. "[" .. k .. "]=" .. v .. ","
+        if not first then str = str .. "," end
+        str = str .. '"' .. k .. '":' .. v
+        first = false
     end
-    str = str .. "},\n"
-    str = str .. "}"
+    str = str .. '}}'
     love.filesystem.write(SAVE_FILE, str)
 end
 

@@ -36,8 +36,10 @@ end
 function anim.startMove(carId, dx, dy, cellSize)
     local a = getAnim(carId)
     -- Start from negative offset (old position) and animate to 0
-    a.offsetX = -dx * cellSize
-    a.offsetY = -dy * cellSize
+    a.startX = -dx * cellSize
+    a.startY = -dy * cellSize
+    a.offsetX = a.startX
+    a.offsetY = a.startY
     a.targetX = 0
     a.targetY = 0
     a.moving = true
@@ -57,8 +59,8 @@ function anim.update(dt)
             a.moveTimer = a.moveTimer + dt
             local t = math.min(a.moveTimer / MOVE_DURATION, 1)
             t = anim.smoothstep(t)
-            a.offsetX = anim.lerp(a.offsetX, a.targetX, t)
-            a.offsetY = anim.lerp(a.offsetY, a.targetY, t)
+            a.offsetX = anim.lerp(a.startX, a.targetX, t)
+            a.offsetY = anim.lerp(a.startY, a.targetY, t)
             if t >= 1 then
                 a.offsetX = 0
                 a.offsetY = 0

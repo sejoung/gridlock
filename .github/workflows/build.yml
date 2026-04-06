@@ -122,9 +122,9 @@ jobs:
           Remove-Item "$loveDir\readme.txt" -ErrorAction SilentlyContinue
 
           # Use pre-built .ico icon
-          if (Test-Path "assets\icon.ico") {
+          if (Test-Path "assets\icon\icon.ico") {
             Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile rcedit.exe
-            .\rcedit.exe "$loveDir\gridlock.exe" --set-icon "assets\icon.ico"
+            .\rcedit.exe "$loveDir\gridlock.exe" --set-icon "assets\icon\icon.ico"
           }
 
           Rename-Item $loveDir "gridlock-windows"

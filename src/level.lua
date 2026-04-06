@@ -66,7 +66,6 @@ local function parseLevels(data)
     for _, lv in ipairs(data.levels) do
         local cars = {}
         for _, c in ipairs(lv.cars) do
-            local typeDef = carTypes[c.type]
             table.insert(cars, {
                 id = c.id,
                 x = c.x,
@@ -154,12 +153,21 @@ function level.count()
 end
 
 -- HTTP fetch helper (used in threads)
--- curl: macOS/Linux/Windows 10+ all have it built-in
--- PowerShell fallback for older Windows
+-- Uses whitelisted URLs only to prevent shell injection
 local FETCH_CODE = [[
     local function fetch(url)
+        -- Validate URL is from expected domain (prevent injection)
+        if not url:match("^https://[%w%.%-]+%.github%.io/") then
+            return nil
+        end
+
+        -- Sanitize: only allow safe URL characters
+        if url:match('[^%w%-%._~:/?#%[%]@!$&\'%(%)%*%+,;=%%]') then
+            return nil
+        end
+
         -- Try curl first (available on macOS, Linux, Windows 10+)
-        local handle = io.popen('curl -sL --max-time 10 "' .. url .. '" 2>/dev/null')
+        local handle = io.popen("curl -sL --max-time 10 '" .. url .. "' 2>/dev/null")
         if handle then
             local body = handle:read("*a")
             handle:close()
@@ -169,7 +177,7 @@ local FETCH_CODE = [[
         end
 
         -- Fallback: PowerShell (Windows)
-        local cmd = 'powershell -Command "(Invoke-WebRequest -Uri \'' .. url .. '\' -UseBasicParsing).Content" 2>nul'
+        local cmd = "powershell -Command \"(Invoke-WebRequest -Uri '" .. url .. "' -UseBasicParsing).Content\" 2>nul"
         handle = io.popen(cmd)
         if handle then
             local body = handle:read("*a")
@@ -186,6 +194,13 @@ local FETCH_CODE = [[
 -- Check for updates: Step 1 = version check, Step 2 = download if needed
 function level.checkForUpdates()
     if level.updateStatus == "checking" or level.updateStatus == "downloading" then
+        return
+    end
+
+    -- Skip update on web builds (no shell/curl available)
+    local os = love.system.getOS()
+    if os == "Web" or os == "Android" or os == "iOS" then
+        level.updateStatus = "idle"
         return
     end
 

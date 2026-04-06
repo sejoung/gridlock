@@ -39,22 +39,34 @@ end
 
 function love.mousemoved(x, y, dx, dy)
     local vx, vy = screen.toVirtual(x, y)
-    game.mousemoved(vx, vy, dx / 1, dy / 1)
+    game.mousemoved(vx, vy, dx, dy)
 end
 
+-- Track only the first touch to prevent multi-touch confusion
+local activeTouchId = nil
+
 function love.touchpressed(id, x, y)
+    if activeTouchId then return end
+    activeTouchId = id
     local vx, vy = screen.toVirtual(x, y)
     game.mousepressed(vx, vy, 1)
 end
 
 function love.touchreleased(id, x, y)
+    if id ~= activeTouchId then return end
+    activeTouchId = nil
     local vx, vy = screen.toVirtual(x, y)
     game.mousereleased(vx, vy, 1)
 end
 
 function love.touchmoved(id, x, y, dx, dy)
+    if id ~= activeTouchId then return end
     local vx, vy = screen.toVirtual(x, y)
     game.mousemoved(vx, vy, dx, dy)
+end
+
+function love.wheelmoved(x, y)
+    game.wheelmoved(x, y)
 end
 
 function love.keypressed(key)
