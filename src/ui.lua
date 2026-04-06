@@ -1,7 +1,7 @@
 local ui = {}
 
-local BUTTON_W = 200
-local BUTTON_H = 48
+local BUTTON_W = 220
+local BUTTON_H = 52
 
 -- Fonts
 local titleFont = nil
@@ -15,10 +15,10 @@ local mouseX, mouseY = 0, 0
 local hoverAlpha = 0
 
 function ui.loadFonts()
-    titleFont = love.graphics.newFont(36)
-    subtitleFont = love.graphics.newFont(18)
-    bodyFont = love.graphics.newFont(16)
-    smallFont = love.graphics.newFont(13)
+    titleFont = love.graphics.newFont(40)
+    subtitleFont = love.graphics.newFont(22)
+    bodyFont = love.graphics.newFont(20)
+    smallFont = love.graphics.newFont(16)
 end
 
 function ui.update(dt)
@@ -94,9 +94,9 @@ function ui.drawTitle()
     love.graphics.line(300, 210, 500, 210)
 
     local bx = (800 - BUTTON_W) / 2
-    drawButton("Start", bx, 250)
+    drawButton("Start", bx, 245)
     drawButton("Level Select", bx, 315)
-    drawButton("Exit", bx, 380)
+    drawButton("Exit", bx, 385)
 
     -- Level update status
     local levelMod = require("src.level")
@@ -115,7 +115,7 @@ function ui.drawTitle()
     -- Footer
     love.graphics.setFont(smallFont)
     love.graphics.setColor(0.35, 0.35, 0.4)
-    local footer = "Arrow keys or mouse drag to move"
+    local footer = "Drag to move cars"
     local fw = smallFont:getWidth(footer)
     love.graphics.print(footer, (800 - fw) / 2, 560)
 end
@@ -123,11 +123,11 @@ end
 function ui.titleClick(x, y, game)
     local bx = (800 - BUTTON_W) / 2
 
-    if isInside(x, y, bx, 250, BUTTON_W, BUTTON_H) then
+    if isInside(x, y, bx, 245, BUTTON_W, BUTTON_H) then
         game.startLevel(1)
     elseif isInside(x, y, bx, 315, BUTTON_W, BUTTON_H) then
         game.state = "level_select"
-    elseif isInside(x, y, bx, 380, BUTTON_W, BUTTON_H) then
+    elseif isInside(x, y, bx, 385, BUTTON_W, BUTTON_H) then
         love.event.quit()
     end
 end
@@ -228,17 +228,17 @@ end
 
 -- HUD
 
-local HUD_BTN_W = 90
-local HUD_BTN_H = 34
+local HUD_BTN_W = 110
+local HUD_BTN_H = 42
 
 function ui.drawHUD(levelNum, moveCount, hintUsed)
     -- Top bar background
     love.graphics.setColor(0.12, 0.12, 0.15, 0.9)
-    love.graphics.rectangle("fill", 0, 0, 800, 40)
+    love.graphics.rectangle("fill", 0, 0, 800, 48)
 
     love.graphics.setFont(bodyFont)
     love.graphics.setColor(0.9, 0.9, 0.9)
-    love.graphics.print("Level " .. levelNum, 20, 10)
+    love.graphics.print("Level " .. levelNum, 20, 12)
 
     love.graphics.setColor(0.8, 0.8, 0.5)
     local movesText = "Moves: " .. moveCount
@@ -246,29 +246,29 @@ function ui.drawHUD(levelNum, moveCount, hintUsed)
         movesText = movesText .. "  (Hint)"
     end
     local mw = bodyFont:getWidth(movesText)
-    love.graphics.print(movesText, 800 - mw - 20, 10)
+    love.graphics.print(movesText, 800 - mw - 20, 12)
 
     -- Bottom bar background
     love.graphics.setColor(0.12, 0.12, 0.15, 0.9)
-    love.graphics.rectangle("fill", 0, 556, 800, 44)
+    love.graphics.rectangle("fill", 0, 552, 800, 48)
 
-    drawButton("Undo (U)", 16, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
-    drawButton("Reset (R)", 116, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
-    drawButton("Hint (H)", 216, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
-    drawButton("Menu", 800 - HUD_BTN_W - 16, 560, HUD_BTN_W, HUD_BTN_H, smallFont)
+    drawButton("Undo", 12, 555, HUD_BTN_W, HUD_BTN_H, smallFont)
+    drawButton("Reset", 132, 555, HUD_BTN_W, HUD_BTN_H, smallFont)
+    drawButton("Hint", 252, 555, HUD_BTN_W, HUD_BTN_H, smallFont)
+    drawButton("Menu", 800 - HUD_BTN_W - 12, 555, HUD_BTN_W, HUD_BTN_H, smallFont)
 end
 
 function ui.hudClick(x, y, game)
-    if isInside(x, y, 16, 560, HUD_BTN_W, HUD_BTN_H) then
+    if isInside(x, y, 12, 555, HUD_BTN_W, HUD_BTN_H) then
         game.undo()
         return true
-    elseif isInside(x, y, 116, 560, HUD_BTN_W, HUD_BTN_H) then
+    elseif isInside(x, y, 132, 555, HUD_BTN_W, HUD_BTN_H) then
         game.reset()
         return true
-    elseif isInside(x, y, 216, 560, HUD_BTN_W, HUD_BTN_H) then
+    elseif isInside(x, y, 252, 555, HUD_BTN_W, HUD_BTN_H) then
         game.hint()
         return true
-    elseif isInside(x, y, 800 - HUD_BTN_W - 16, 560, HUD_BTN_W, HUD_BTN_H) then
+    elseif isInside(x, y, 800 - HUD_BTN_W - 12, 555, HUD_BTN_W, HUD_BTN_H) then
         game.state = "title"
         return true
     end
