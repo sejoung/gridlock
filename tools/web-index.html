@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1, user-scalable=no">
   <title>Gridlock - A Parking Puzzle</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <style>
@@ -16,6 +16,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      overflow-x: hidden;
+      touch-action: none;
     }
 
     .header {
@@ -56,6 +58,7 @@
     }
     .game-border {
       display: inline-block;
+      max-width: 100%;
     }
 
     .controls {
@@ -64,6 +67,7 @@
       justify-content: center;
       margin-top: 10px;
       flex-wrap: wrap;
+      padding: 0 16px;
     }
     .control-item {
       display: flex;
@@ -88,6 +92,7 @@
       margin-top: 18px;
       flex-wrap: wrap;
       justify-content: center;
+      padding: 0 16px;
     }
     .links a {
       display: inline-flex;
@@ -119,6 +124,49 @@
     .footer a { color: #666; text-decoration: none; }
     .footer a:hover { color: #999; }
     .icon-svg { width: 16px; height: 16px; fill: currentColor; }
+
+    /* Mobile responsive */
+    @media (max-width: 840px) {
+      .game-wrapper {
+        width: 100vw;
+        height: calc(100vw * 0.75);
+        max-width: 800px;
+        max-height: 600px;
+      }
+      #loadingCanvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+      #canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .header {
+        padding: 16px 16px 8px;
+      }
+      .header img { width: 48px; height: 48px; }
+      .header h1 { font-size: 24px; letter-spacing: 3px; }
+      .header p { font-size: 12px; }
+      .controls { display: none; }
+      .links { gap: 8px; margin-top: 12px; }
+      .links a { font-size: 12px; padding: 6px 12px; }
+    }
+
+    /* Landscape mobile: maximize game area */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .header { display: none; }
+      .controls { display: none; }
+      .links { display: none; }
+      .footer { display: none; }
+      body { justify-content: center; }
+      .game-wrapper {
+        width: calc(100vh * 1.333);
+        height: 100vh;
+        max-width: 800px;
+        max-height: 600px;
+        margin: 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -175,6 +223,23 @@
       if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
         e.preventDefault();
       }
+    }, false);
+
+    // Prevent touch gestures from scrolling/zooming the page
+    document.addEventListener('touchmove', function(e) {
+      if (e.target.tagName === 'CANVAS' || e.target.closest('.game-wrapper')) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // Prevent double-tap zoom on game area
+    var lastTouchEnd = 0;
+    document.addEventListener('touchend', function(e) {
+      var now = Date.now();
+      if (now - lastTouchEnd <= 300 && (e.target.tagName === 'CANVAS' || e.target.closest('.game-wrapper'))) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
     }, false);
 
     var loadingContext = document.getElementById('loadingCanvas').getContext('2d');
