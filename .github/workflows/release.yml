@@ -36,6 +36,7 @@ jobs:
         with:
           name: release-love-file
           path: gridlock.love
+          retention-days: 7
 
   build-macos:
     name: Build macOS
@@ -80,6 +81,7 @@ jobs:
         with:
           name: release-macos-build
           path: gridlock-macos.zip
+          retention-days: 7
 
   build-windows:
     name: Build Windows
@@ -132,6 +134,7 @@ jobs:
         with:
           name: release-windows-build
           path: gridlock-windows.zip
+          retention-days: 7
 
   release:
     name: Create GitHub Release
